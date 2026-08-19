@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { botApiFetch } from "@/utils/api";
 import Link from "next/link";
 import { CheckCircle2, ChevronLeft } from "lucide-react";
+import { useToast } from "@/context/ToastContext";
 import { useTranslation } from "@/i18n/LanguageContext";
 
 export function PhaseConfigClient({ 
@@ -19,6 +20,7 @@ export function PhaseConfigClient({
   totalTeams: number 
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<"general" | "advanced">("general");
@@ -107,13 +109,14 @@ export function PhaseConfigClient({
       }
       router.refresh();
       if (shouldRedirect) {
+        toast.success(t("feedback.settingsSaved"));
         router.push(`/admin/${guildId}/tournaments/${tournamentId}/structure`);
       } else {
-        alert(t("feedback.settingsUpdated"));
+        toast.success(t("feedback.settingsUpdated"));
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert(t("feedback.updateFailedNoDetail"));
+      toast.error(e.message ? t("feedback.updateFailed", { message: e.message }) : t("feedback.updateFailedNoDetail"));
     } finally {
       setIsSubmitting(false);
     }

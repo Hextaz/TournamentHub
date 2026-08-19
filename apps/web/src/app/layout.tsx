@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AuthProvider from "@/components/AuthProvider";
+import { ToastProvider } from "@/context/ToastContext";
 import Navbar from "@/components/Navbar";
 import { LanguageProvider } from "@/i18n/LanguageContext";
 import { cookies, headers } from "next/headers";
@@ -50,10 +51,12 @@ export default async function RootLayout({
       <body className="min-h-full flex flex-col bg-[#0a0a0f] text-slate-200">
         <AuthProvider>
           <LanguageProvider initialLocale={initialLocale}>
-            <Navbar />
-            <main className="flex-1 w-full flex flex-col">
-              {children}
-            </main>
+            <ToastProvider>
+              <Navbar />
+              <main className="flex-1 w-full flex flex-col">
+                {children}
+              </main>
+            </ToastProvider>
           </LanguageProvider>
         </AuthProvider>
       </body>

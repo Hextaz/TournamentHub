@@ -4,15 +4,20 @@ import { useState, useEffect, useRef } from "react";
 import { getBotApiUrl, botApiFetch } from '@/utils/api';
 
 import { useRouter } from "next/navigation";
-import { CheckCircle2, XCircle, UserPlus, Trash2, Search, Pencil } from "lucide-react";
+import { CheckCircle2, XCircle, UserPlus, Trash2, Search, Pencil, Sparkles } from "lucide-react";
+import { useToast } from "@/context/ToastContext";
+import { PromptModal } from "@/components/ui/PromptModal";
 import { useTranslation } from "@/i18n/LanguageContext";
 
 export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { tournamentId: string; guildId: string; initialTeams: any[] }) {
   const router = useRouter();
+  const { toast } = useToast();
   const { t } = useTranslation();
   const [teams, setTeams] = useState(initialTeams);
   const [isAdding, setIsAdding] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
+  const [showFakeModal, setShowFakeModal] = useState(false);
+  const [isGeneratingFake, setIsGeneratingFake] = useState(false);
 
   // Custom Combobox State
   const [members, setMembers] = useState<any[]>([]);
@@ -106,19 +111,22 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       setSearchTerm("");
       setSelectedMember(null);
       setIsAdding(false);
+      toast.success(t("feedback.teamAdded"));
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      alert(t("feedback.addTeamFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.addTeamFailed", { message: err.message || String(err) }));
     }
   };
 
-  const handleGenerateFakeTeams = async () => {
-    const userInput = window.prompt(t("feedback.fakeTeamsPrompt"), "8");
-    if (!userInput) return;
-    const count = parseInt(userInput);
-    if (!count || count <= 0) return;
+  const handleGenerateFakeTeamsSubmit = async (inputStr: string) => {
+    const count = parseInt(inputStr, 10);
+    if (isNaN(count) || count < 1 || count > 128) {
+      toast.warning(t("feedback.fakeTeamsInvalidCount", { min: 1, max: 128 }));
+      return;
+    }
 
+    setIsGeneratingFake(true);
     try {
       const res = await botApiFetch('/api/teams/generate-fake', {
         method: 'POST',
@@ -133,11 +141,14 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
 
       const newTeams = await res.json();
       setTeams(prev => [...prev, ...newTeams]);
+      setShowFakeModal(false);
+      toast.success(t("feedback.fakeTeamsAdded", { count }));
       router.refresh();
-      alert(t("feedback.fakeTeamsAdded", { count }));
     } catch (err: any) {
       console.error(err);
-      alert(t("feedback.fakeTeamsFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.fakeTeamsFailed", { message: err.message || String(err) }));
+    } finally {
+      setIsGeneratingFake(false);
     }
   };
 
@@ -155,10 +166,11 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       }
 
       setTeams(teams.map(t => t.id === teamId ? { ...t, is_checked_in: !currentStatus } : t));
+      toast.success(!currentStatus ? t("feedback.teamCheckedIn") : t("feedback.teamCheckinCancelled"));
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      alert(t("feedback.updateFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.updateFailed", { message: err.message || String(err) }));
     }
   };
 
@@ -197,10 +209,11 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       setEditTeamName("");
       setSelectedMember(null);
       setSearchTerm("");
+      toast.success(t("feedback.teamUpdated"));
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      alert(t("feedback.editTeamFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.editTeamFailed", { message: err.message || String(err) }));
     }
   };
 
@@ -218,10 +231,11 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
 
       setTeams(teams.filter(t => t.id !== teamToDelete.id));
       setTeamToDelete(null);
+      toast.success(t("feedback.teamDeleted"));
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      alert(t("feedback.deleteTeamFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.deleteTeamFailed", { message: err.message || String(err) }));
     }
   };
 
@@ -297,9 +311,10 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
           </button>
 
           <button
-            onClick={handleGenerateFakeTeams}
-            className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-lg shadow-yellow-500/20"
+            onClick={() => setShowFakeModal(true)}
+            className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-lg shadow-yellow-500/20 cursor-pointer"
           >
+            <Sparkles className="w-4 h-4" />
             {t("adminParticipants.generateFake")}
           </button>
         </div>
@@ -688,6 +703,22 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
           </div>
         </div>
       )}
+
+      {/* Modal Génération Fake Teams */}
+      <PromptModal
+        isOpen={showFakeModal}
+        onClose={() => setShowFakeModal(false)}
+        onSubmit={handleGenerateFakeTeamsSubmit}
+        title={t("adminParticipants.fakeTeamsTitle")}
+        description={t("feedback.fakeTeamsPrompt")}
+        defaultValue="8"
+        inputType="number"
+        min={1}
+        max={128}
+        placeholder={t("adminParticipants.fakeTeamsPlaceholder")}
+        confirmText={t("adminParticipants.fakeTeamsConfirm")}
+        isLoading={isGeneratingFake}
+      />
     </div>
   );
 }
