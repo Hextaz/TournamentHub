@@ -118,24 +118,26 @@ export class RegistrationService {
         .eq('id', tournamentId)
         .single();
 
-      if (tournament) {
-        const embed = {
-          title: tBot(targetLang, 'registration.embedTitle', { name: tournament.name }),
-          description: tournament.description || tBot(targetLang, 'registration.embedDescription'),
-          color: 0x5865F2,
-          fields: [
-            {
-              name: tBot(targetLang, 'registration.friendCodeRuleTitle'),
-              value: tBot(targetLang, 'registration.friendCodeRuleValue')
-            }
-          ],
-          footer: {
-            text: `Tournoi ID: ${tournament.id}`
-          }
-        };
-
-        return interaction.reply({ embeds: [embed], ephemeral: true });
+      if (!tournament || tournament.guild_id !== interaction.guildId) {
+        return interaction.reply({ content: "❌ Tournoi introuvable ou accès non autorisé.", ephemeral: true });
       }
+
+      const embed = {
+        title: tBot(targetLang, 'registration.embedTitle', { name: tournament.name }),
+        description: tournament.description || tBot(targetLang, 'registration.embedDescription'),
+        color: 0x5865F2,
+        fields: [
+          {
+            name: tBot(targetLang, 'registration.friendCodeRuleTitle'),
+            value: tBot(targetLang, 'registration.friendCodeRuleValue')
+          }
+        ],
+        footer: {
+          text: `Tournoi ID: ${tournament.id}`
+        }
+      };
+
+      return interaction.reply({ embeds: [embed], ephemeral: true });
     } catch (e) {
       console.error("[RegistrationService] Language toggle error:", e);
     }
