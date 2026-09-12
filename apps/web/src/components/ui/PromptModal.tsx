@@ -61,7 +61,12 @@ export function PromptModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
+    <div
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !isLoading) onClose();
+      }}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
+    >
       <div
         className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-2xl max-w-md w-full relative transform transition-all animate-in zoom-in-95 duration-200"
         role="dialog"
@@ -70,6 +75,7 @@ export function PromptModal({
         <button
           onClick={onClose}
           disabled={isLoading}
+          aria-label="Fermer"
           className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50"
         >
           <X className="w-5 h-5" />

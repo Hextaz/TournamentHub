@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
 
 export type ToastType = "success" | "error" | "warning" | "info";
@@ -49,23 +49,31 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     [removeToast]
   );
 
-  const toast = {
-    success: (message: string, title?: string, duration?: number) =>
-      showToast({ type: "success", message, title, duration }),
-    error: (message: string, title?: string, duration?: number) =>
-      showToast({ type: "error", message, title, duration }),
-    warning: (message: string, title?: string, duration?: number) =>
-      showToast({ type: "warning", message, title, duration }),
-    info: (message: string, title?: string, duration?: number) =>
-      showToast({ type: "info", message, title, duration }),
-  };
+  const toast = useMemo(
+    () => ({
+      success: (message: string, title?: string, duration?: number) =>
+        showToast({ type: "success", message, title, duration }),
+      error: (message: string, title?: string, duration?: number) =>
+        showToast({ type: "error", message, title, duration }),
+      warning: (message: string, title?: string, duration?: number) =>
+        showToast({ type: "warning", message, title, duration }),
+      info: (message: string, title?: string, duration?: number) =>
+        showToast({ type: "info", message, title, duration }),
+    }),
+    [showToast]
+  );
+
+  const contextValue = useMemo(
+    () => ({ toast, showToast, removeToast }),
+    [toast, showToast, removeToast]
+  );
 
   return (
-    <ToastContext.Provider value={{ toast, showToast, removeToast }}>
+    <ToastContext.Provider value={contextValue}>
       {children}
       {/* Toast Container */}
       <div
-        aria-live="assertive"
+        aria-live="polite"
         className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 max-w-md w-full pointer-events-none px-4 sm:px-0"
       >
         {toasts.map((t) => {
