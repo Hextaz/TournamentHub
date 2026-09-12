@@ -185,6 +185,8 @@ export class LifecycleService {
         throw new Error('Tournament does not have an active Discord Category. Please launch the tournament first.');
       }
 
+      const lang = await getGuildLanguage(guildId, tournament.id);
+
       const guild = discordClient.guilds.cache.get(guildId) || await discordClient.guilds.fetch(guildId).catch(() => undefined);
       if (!guild) throw new Error(`Guild ${guildId} not found.`);
 
@@ -237,8 +239,8 @@ export class LifecycleService {
           channelId = phaseChannel.id;
           await supabase.from('phases').update({ discord_channel_id: channelId }).eq('id', phaseId);
           const welcomeMsg = phase.format === 'SWISS'
-            ? `🇨🇭 Bienvenue dans l'espace de Rondes Suisses **${phase.name}** ! Coordonnez vos matchs ici.`
-            : `🏁 Bienvenue dans le bracket **${phase.name}** ! Cet espace est réservé aux capitaines de cette phase.`;
+            ? tBot(lang, 'lifecycle.swissWelcome', { name: phase.name })
+            : tBot(lang, 'lifecycle.bracketWelcome', { name: phase.name });
           await phaseChannel.send(welcomeMsg);
         } else {
           const phaseChannel = guild.channels.cache.get(channelId);
@@ -286,7 +288,7 @@ export class LifecycleService {
             });
             channelId = groupChannel.id;
             await supabase.from('groups').update({ discord_channel_id: channelId }).eq('id', group.id);
-            await groupChannel.send(`⚔️ Bienvenue dans le **Groupe ${group.name}** de la phase ${phase.name} ! Coordonnez vos matchs ici.`);
+            await groupChannel.send(tBot(lang, 'lifecycle.groupWelcome', { groupName: group.name, phaseName: phase.name }));
           } else {
             const groupChannel = guild.channels.cache.get(channelId);
             if (groupChannel && groupChannel.isTextBased() && 'permissionOverwrites' in groupChannel) {
