@@ -18,6 +18,7 @@ export interface Tournament {
   is_public: boolean;
   status: TournamentStatus;
   game_type: GameType;
+  language?: 'fr' | 'en' | string;
   start_at?: string | null;
   checkin_start_at?: string | null;
   checkin_end_at?: string | null;
@@ -79,6 +80,7 @@ export const CreateTournamentSchema = z.object({
   guild_id: z.string().min(1, "guild_id obligatoire"),
   description: z.string().optional().nullable(),
   game_type: z.string().default("GENERIC"),
+  language: z.string().optional(),
   start_at: z.string().optional().nullable(),
   checkin_start_at: z.string().optional().nullable(),
   checkin_end_at: z.string().optional().nullable(),
