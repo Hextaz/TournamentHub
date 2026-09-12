@@ -4,7 +4,7 @@ const path = require('path');
 
 function getSupabaseStatus() {
   // Capture both stdout and stderr to handle cases where Supabase outputs to different streams
-  const output = execSync('npx supabase status 2>&1', { encoding: 'utf8' });
+  const output = execSync('npx supabase status -o json 2>&1', { encoding: 'utf8' });
 
   // Try to parse the entire output as JSON first
   try {
@@ -27,7 +27,7 @@ function getSupabaseStatus() {
   }
 }
 
-function getSupabaseStatusWithRetries(retries = 5, delay = 2000) {
+function getSupabaseStatusWithRetries(retries = 10, delay = 2000) {
   let lastError;
   for (let i = 0; i < retries; i++) {
     try {
