@@ -71,6 +71,8 @@ dev-build:
 	docker compose build
 
 lint:
+	@echo "🔍 Vérification du typage dans packages/shared..."
+	cd packages/shared && npx tsc --noEmit
 	@echo "🔍 Vérification du typage dans apps/bot..."
 	cd apps/bot && npx tsc --noEmit
 	@echo "🔍 Linting dans apps/web..."
