@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Locale, TranslationParams } from "./types";
 import { defaultLocale, t as translate } from "./index";
@@ -34,39 +34,58 @@ export function LanguageProvider({
     // 1. Try reading from localStorage on mount
     const saved = localStorage.getItem(STORAGE_KEY) as Locale | null;
     if (saved === "fr" || saved === "en") {
-      if (saved !== locale) {
-        setLocaleState(saved);
-        document.documentElement.lang = saved;
-        document.cookie = `${COOKIE_NAME}=${saved}; path=/; max-age=31536000; SameSite=Lax`;
-      }
+      setLocaleState((prev) => {
+        if (saved !== prev) {
+          document.documentElement.lang = saved;
+          document.cookie = `${COOKIE_NAME}=${saved}; path=/; max-age=31536000; SameSite=Lax`;
+          return saved;
+        }
+        return prev;
+      });
     } else {
       // Check navigator language
       const navLang = navigator.language?.toLowerCase();
       if (navLang?.startsWith("en")) {
-        setLocaleState("en");
-        document.documentElement.lang = "en";
-        document.cookie = `${COOKIE_NAME}=en; path=/; max-age=31536000; SameSite=Lax`;
+        setLocaleState((prev) => {
+          if (prev !== "en") {
+            document.documentElement.lang = "en";
+            document.cookie = `${COOKIE_NAME}=en; path=/; max-age=31536000; SameSite=Lax`;
+            return "en";
+          }
+          return prev;
+        });
       }
     }
   }, []);
 
-  const setLocale = (newLocale: Locale) => {
-    setLocaleState(newLocale);
-    if (typeof window !== "undefined") {
-      localStorage.setItem(STORAGE_KEY, newLocale);
-      document.cookie = `${COOKIE_NAME}=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
-      document.documentElement.lang = newLocale;
-    }
-    // Instantly refresh Server Component routes without manual page reload
-    router.refresh();
-  };
+  const setLocale = useCallback(
+    (newLocale: Locale) => {
+      setLocaleState(newLocale);
+      if (typeof window !== "undefined") {
+        localStorage.setItem(STORAGE_KEY, newLocale);
+        document.cookie = `${COOKIE_NAME}=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+        document.documentElement.lang = newLocale;
+      }
+      // Instantly refresh Server Component routes without manual page reload
+      router.refresh();
+    },
+    [router]
+  );
 
-  const t = (key: string, params?: TranslationParams) => {
-    return translate(locale, key, params);
-  };
+  const t = useCallback(
+    (key: string, params?: TranslationParams) => {
+      return translate(locale, key, params);
+    },
+    [locale]
+  );
+
+  const value = useMemo(
+    () => ({ locale, setLocale, t }),
+    [locale, setLocale, t]
+  );
 
   return (
-    <LanguageContext.Provider value={{ locale, setLocale, t }}>
+    <LanguageContext.Provider value={value}>
       {children}
     </LanguageContext.Provider>
   );
