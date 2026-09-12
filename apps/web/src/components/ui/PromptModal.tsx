@@ -35,12 +35,16 @@ export function PromptModal({
   isLoading = false,
 }: PromptModalProps) {
   const [value, setValue] = useState(defaultValue);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  const [prevDefaultValue, setPrevDefaultValue] = useState(defaultValue);
 
-  useEffect(() => {
+  if (isOpen !== prevIsOpen || defaultValue !== prevDefaultValue) {
+    setPrevIsOpen(isOpen);
+    setPrevDefaultValue(defaultValue);
     if (isOpen) {
       setValue(defaultValue);
     }
-  }, [isOpen, defaultValue]);
+  }
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -57,6 +61,14 @@ export function PromptModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!value.trim()) return;
+
+    if (inputType === "number") {
+      const numVal = Number(value);
+      if (isNaN(numVal)) return;
+      if (min !== undefined && numVal < min) return;
+      if (max !== undefined && numVal > max) return;
+    }
+
     onSubmit(value);
   };
 
