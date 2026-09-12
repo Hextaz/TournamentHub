@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { useTranslation } from "@/i18n/LanguageContext";
 
 export default function GlobalError({
@@ -30,12 +31,12 @@ export default function GlobalError({
         >
           {t("error.retry")}
         </button>
-        <a
+        <Link
           href="/"
           className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-2 rounded-lg text-sm font-medium transition"
         >
           {t("error.home")}
-        </a>
+        </Link>
       </div>
     </div>
   );

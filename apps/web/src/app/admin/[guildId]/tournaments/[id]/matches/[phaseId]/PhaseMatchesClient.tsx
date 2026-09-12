@@ -82,7 +82,7 @@ export function PhaseMatchesClient({ tournamentId, guildId, phase, initialMatche
     if (res !== target) return "bg-slate-800 text-slate-500 border border-slate-700";
     if (target === "V") return "bg-green-500 text-white font-bold border border-green-600 shadow-sm";
     if (target === "D") return "bg-red-500 text-white font-bold border border-red-600 shadow-sm";
-    return "bg-[#0f111a]0 text-white font-bold border border-slate-600 shadow-sm"; // N
+    return "bg-slate-700 text-white font-bold border border-slate-600 shadow-sm"; // N
   };
 
   const renderBadgeRow = (isTeam1: boolean) => {
@@ -334,7 +334,7 @@ export function PhaseMatchesClient({ tournamentId, guildId, phase, initialMatche
                                    {match.team1?.name || t("common.tbd")}
                                 </div>
                                 {isCompleted && (
-                                   <div className="px-3 border-l border-slate-700/50 flex items-center justify-center font-bold text-slate-355 w-10 shrink-0 bg-[#0f111a]">
+                                   <div className="px-3 border-l border-slate-700/50 flex items-center justify-center font-bold text-slate-300 w-10 shrink-0 bg-[#0f111a]">
                                      {match.team1_score}
                                    </div>
                                 )}
@@ -348,7 +348,7 @@ export function PhaseMatchesClient({ tournamentId, guildId, phase, initialMatche
                                    ) : t("common.tbd")}
                                 </div>
                                 {isCompleted && (
-                                   <div className="px-3 border-l border-slate-700/50 flex items-center justify-center font-bold text-slate-355 w-10 shrink-0 bg-[#0f111a]">
+                                   <div className="px-3 border-l border-slate-700/50 flex items-center justify-center font-bold text-slate-300 w-10 shrink-0 bg-[#0f111a]">
                                      {match.team2_score}
                                    </div>
                                 )}
@@ -593,7 +593,7 @@ export function PhaseMatchesClient({ tournamentId, guildId, phase, initialMatche
                <button 
                  onClick={() => setSelectedMatch(null)}
                  disabled={isSubmitting}
-                 className="px-6 py-2.5 bg-[#0f111a]0 hover:bg-slate-600 text-white font-bold rounded shadow-sm transition-colors flex items-center gap-2"
+                 className="px-6 py-2.5 bg-slate-700 hover:bg-slate-600 text-white font-bold rounded shadow-sm transition-colors flex items-center gap-2"
                >
                  <ArrowLeft className="w-4 h-4"/> {t("common.back")}
                </button>
