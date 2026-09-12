@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { botApiFetch } from "@/utils/api";
 import { useRouter } from "next/navigation";
-import { Square, Clock, ShieldAlert, Calendar, AlertTriangle } from "lucide-react";
+import { Square, Clock, ShieldAlert, Calendar } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 

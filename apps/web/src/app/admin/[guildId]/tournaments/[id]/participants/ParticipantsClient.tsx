@@ -118,9 +118,9 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
   };
 
   const handleGenerateFakeTeamsSubmit = async (inputStr: string) => {
-    const count = parseInt(inputStr);
-    if (!count || count <= 0) {
-      toast.warning("Veuillez renseigner un nombre d'équipes valide (> 0).");
+    const count = parseInt(inputStr, 10);
+    if (isNaN(count) || count < 1 || count > 128) {
+      toast.warning("Veuillez renseigner un nombre d'équipes valide (entre 1 et 128).");
       return;
     }
 

@@ -139,7 +139,7 @@ export function PlacementPhaseClient({
     setModalOpen(true);
   };
   const handleAutoFill = () => {
-    let unplacedTeams = availableTeams.filter(
+    const unplacedTeams = availableTeams.filter(
       (t) => !seeds.some((s) => s?.id === t.id),
     );
     if (unplacedTeams.length === 0) {

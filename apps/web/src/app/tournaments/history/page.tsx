@@ -36,9 +36,14 @@ export default function TournamentsHistoryPage() {
     if (!tournamentToDelete) return;
     try {
       setDeleting(true);
-      const { error } = await supabase.from("tournaments").delete().eq("id", tournamentToDelete.id);
-      if (error) throw error;
-      setHistory(history.filter(t => t.id !== tournamentToDelete.id));
+      const res = await fetch(`/api/tournaments/${tournamentToDelete.id}?guildId=${guildId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Erreur lors de la suppression");
+      }
+      setHistory((prev) => prev.filter((t) => t.id !== tournamentToDelete.id));
       setTournamentToDelete(null);
       toast.success("Tournoi supprimé définitivement de la base de données.");
     } catch (err: any) {
