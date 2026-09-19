@@ -26,43 +26,79 @@
    * Vérifier la branche active (`git branch --show-current`), les commits de la branche (`git log main..HEAD --oneline`) et les modifs locales en cours (`git status --short`). Alerter si sur `main`.
    * Lire le ticket complet, cartographier les fichiers cibles et inspecter le schéma DB réel (`supabase/migrations/`).
 2. **Phase 2 : 🛑 RÉCAPITULATIF & PLAN D'IMPLÉMENTATION (Point d'arrêt obligatoire)** :
-   * Présenter un récapitulatif clair : État Git, Objectif, Fichiers impactés, Migration DB éventuelle, Cas limites et Stratégie de tests.
+   * Présenter un récapitulatif clair : État Git, Objectif, Fichiers impactés, Migration DB éventuelle, Cas limites et Stratégie de tests TDD.
    * **STOP** : Attendre la validation explicite de l'utilisateur avant d'écrire la moindre ligne de code.
-3. **Phase 3 : Ordre d'implémentation strict (après accord)** :
-   * `1. SQL/Migrations` ➔ `2. @hub/shared` ➔ `3. Services Bot` ➔ `4. Routes API` ➔ `5. Web UI` ➔ `6. Tests`.
+3. **Phase 3 : Implémentation Rigoureuse & Discipline d'Ingénierie** :
+   * Ordre : `1. SQL/Migrations` ➔ `2. @hub/shared` ➔ `3. Services Bot` ➔ `4. Routes API` ➔ `5. Web UI` ➔ `6. Tests`.
    * ⚡ **Après modification de `packages/shared`** : exécuter `npm run build --workspace=@hub/shared`.
-   * Respecter les contraintes TypeScript strict (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`) et Next.js 16 (`await params`, `"use client";`, Toasts au lieu d'alert).
-4. **Phase 4 : Validation complète sans watch (Makefile)** :
-   * `make test` : tests unitaires Vitest (100% de succès).
-   * `make lint` : 0 erreur de typage / linting.
-   * `make build` : compilation globale du monorepo réussie.
-5. **Phase 5 : Bilan Final & Livraison (PAS D'AUTO-COMMIT)** :
-   * `git diff` audité sans console.log ou fichiers parasites.
+   * 🔴 **TDD strict avec Verify RED** : pour tout service métier ou utilitaire (`BracketGeneratorService`, `SchedulerService`), écrire le test Vitest d'abord, **constater l'échec terminal pour la raison attendue**, puis implémenter le code minimal pour passer au vert.
+   * 🛡️ **Loi d'airain Anti-Symptôme (Anti-Band-Aids)** : interdiction formelle de poser une rustine pour faire taire le compilateur ou masquer une erreur (`?.` sauvage, `as any`, `as unknown as`, `try/catch` vide qui étouffe l'erreur). Identifier et corriger la cause racine.
+   * 🎨 **Règles Front React 19 / Next.js 16** :
+     - 3 états obligatoires : Loading Skeleton, Error toast/alerte avec retry, Empty state accueillant.
+     - Nettoyage strict des ressources dans `useEffect` (timers, event listeners, channels Supabase Realtime).
+     - `await params`, `"use client";`, `<Link>`, pas de `setState` synchrone dans `useEffect`.
+4. **Phase 4 : Porte de Vérification (« Evidence Before Claims »)** :
+   * Interdiction d'affirmer qu'une tâche est résolue sans **preuve terminale fraîche** :
+     - `make test` : tests unitaires Vitest (100% de succès).
+     - `make lint` : 0 erreur de typage / linting sur l'ensemble du monorepo.
+     - `make build` : compilation globale réussie.
+5. **Phase 5 : Clôture & Mini-Rapport (PAS D'AUTO-COMMIT)** :
+   * `git diff` audité sans console.log ou fichiers parasites. Zéro `any`.
    * Interdiction formelle d'exécuter `git commit` automatiquement.
-   * Présenter le bilan, les résultats de tests, les instructions pour tester manuellement en local (`make dev`), et la commande de commit prête à copier (`git commit -m "... (#<NUMERO>)"`).
+   * Mini-rapport en 5 lignes max (fichiers modifiés, preuves terminales, cas limites testés, instructions de test local `make dev`, commande de commit suggérée).
 
 ---
 
 ## 🧐 Code Reviewer Intransigeant (Skill d'Audit Staff Engineer)
 
 Le monorepo intègre un skill d'audit complet pour évaluer le code avec un niveau d'exigence maximal (Architecture, Sécurité, Perf, Clean Code, Typage, Tests) :
-* **Skill complet** : `.claude/skills/code-reviewer/SKILL.md`
+* **Skill complet** : `.agents/skills/code-reviewer/SKILL.md` (accessible aussi via `.claude/skills/code-reviewer`)
 * **Commande rapide Claude Code** :
   * `/code-review` : Audite le diff de la branche courante.
   * `/code-review --full` : Audite l'architecture globale du monorepo.
   * `/code-review <chemin/vers/fichier>` : Audite un fichier spécifique.
 * **Format de sortie** :
   1. Scorecard tabulaire avec Note Globale /100 et Verdict.
-  2. Répertoire exhaustif des anomalies classées (`🔴 CRITIQUE`, `🟠 IMPORTANT`, `🟡 MOYEN`, `🟢 FAIBLE`).
-  3. Matrice Effort vs Impact (Quick Wins vs Projets de fond).
-  4. **Prompts prêts à copier-coller** découpés par scope pour déléguer les résolutions dans de nouvelles conversations Claude Code sans polluer le contexte courant.
+  2. Traque le **Shotgun parsing**, les **Band-aids**, le **Tell, Don't Ask**, et les **Tests creux**.
+  3. Répertoire exhaustif des anomalies classées (`🔴 CRITIQUE`, `🟠 IMPORTANT`, `🟡 MOYEN`, `🟢 FAIBLE`).
+  4. Matrice Effort vs Impact et **Prompts prêts à copier-coller** découpés par scope.
+
+---
+
+## 🧪 Test Auditor (Audit Approfondi de Testabilité & Fiabilité)
+
+Skill d'audit dédié à l'évaluation impitoyable de la suite de tests Vitest (Staff QA / Test Architect) :
+* **Skill complet** : `.agents/skills/test-auditor/SKILL.md`
+* **Commande rapide Claude Code** : `/test-audit [--all | <service> | <fichier_test>]`
+* **Piliers d'audit** :
+  1. Couverture du domaine métier critique (générateurs d'arbres, schedulers, seeding).
+  2. Chasse aux **tests creux (hollow tests)** et au mocking abusif.
+  3. Couverture des **cas limites e-sport** (nombres impairs/BYE, forfaits, égalités).
+  4. Déterminisme, isolation et usage de `vi.useFakeTimers()`.
+  5. Structure Arrange-Act-Assert (AAA) et expressivité.
+* **Sortie** : Scorecard /100, anomalies classées, prompts prêts à copier pour implémenter les tests manquants.
+
+---
+
+## 🔒 Security Auditor (Audit de Sécurité Multi-Tenant & AppSec)
+
+Skill d'audit dédié à la sécurité applicative et au cloisonnement strict (Staff AppSec Engineer) :
+* **Skill complet** : `.agents/skills/security-auditor/SKILL.md`
+* **Commande rapide Claude Code** : `/security-audit [--full | <routes> | <migrations>]`
+* **Piliers d'audit** :
+  1. **Cloisonnement multi-tenant & Prévention IDOR** (`guild_id` systématique sur toutes les requêtes/routes).
+  2. **Supabase RLS & Sécurité RPC** (`SET search_path = public, pg_temp` sur les fonctions `SECURITY DEFINER`).
+  3. **Contrôle d'accès RBAC** (Discord permissions côté bot, sessions NextAuth côté web).
+  4. **Validation Zod à la frontière** (schémas stricts, anti-injection, chasse au shotgun parsing).
+  5. **Gestion des secrets** (zéro fuite sous `NEXT_PUBLIC_`, sanitization des erreurs API).
+* **Sortie** : Scorecard /100, répertoire des vulnérabilités, prompts de remédiation immédiate.
 
 ---
 
 ## 💡 Issue Crafter (Atelier d'Idéation, Qualification & Triage)
 
 Permet de transformer une idée brute en spécification "Agent-Ready" après un échange critique, et de la publier/trier sur GitHub Project #2 :
-* **Skill complet** : `.claude/skills/issue-crafter/SKILL.md`
+* **Skill complet** : `.agents/skills/issue-crafter/SKILL.md`
 * **Commande rapide Claude Code** : `/create-issue [description ou idée]`
 * **Rôle** : Lead Product Manager & Staff Engineer (challenger le besoin, détecter les doublons, grounding dans le codebase, rédiger la spec et trier automatiquement via `scripts/triage-issue.js`).
 
