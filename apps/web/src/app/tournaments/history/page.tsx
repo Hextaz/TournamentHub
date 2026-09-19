@@ -3,11 +3,17 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
+import { useToast } from "@/context/ToastContext";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 export default function TournamentsHistoryPage() {
   const guildId = process.env.NEXT_PUBLIC_DISCORD_GUILD_ID || "";
+  const { toast } = useToast();
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tournamentToDelete, setTournamentToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchHistory = async () => {
     setLoading(true);
@@ -26,10 +32,25 @@ export default function TournamentsHistoryPage() {
     fetchHistory();
   }, [guildId]);
 
-  const deleteTournament = async (id: string, name: string) => {
-    if (confirm(`Attention : La suppression de "${name}" effacera définitivement ce tournoi et ses matchs associés de la base de données. Continuer ?`)) {
-      await supabase.from("tournaments").delete().eq("id", id);
-      setHistory(history.filter(t => t.id !== id));
+  const deleteTournament = async () => {
+    if (!tournamentToDelete) return;
+    try {
+      setDeleting(true);
+      const res = await fetch(`/api/tournaments/${tournamentToDelete.id}?guildId=${guildId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Erreur lors de la suppression");
+      }
+      setHistory((prev) => prev.filter((t) => t.id !== tournamentToDelete.id));
+      setTournamentToDelete(null);
+      toast.success("Tournoi supprimé définitivement de la base de données.");
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err.message || "Erreur lors de la suppression");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -70,8 +91,8 @@ export default function TournamentsHistoryPage() {
                     </td>
                     <td className="p-4 text-right">
                       <button 
-                        onClick={() => deleteTournament(t.id, t.name)}
-                        className="text-sm text-red-600 hover:text-red-900 font-medium px-3 py-1 border border-red-200 hover:bg-red-50 rounded transition"
+                        onClick={() => setTournamentToDelete(t)}
+                        className="text-sm text-red-600 hover:text-red-900 font-medium px-3 py-1 border border-red-200 hover:bg-red-50 rounded transition cursor-pointer"
                       >
                         Supprimer
                       </button>
@@ -83,6 +104,25 @@ export default function TournamentsHistoryPage() {
           )}
         </div>
       </div>
+
+      {/* Modal Suppression Tournoi Archivé */}
+      <ConfirmModal
+        isOpen={!!tournamentToDelete}
+        onClose={() => setTournamentToDelete(null)}
+        onConfirm={deleteTournament}
+        title="Supprimer définitivement"
+        description={
+          tournamentToDelete ? (
+            <span>
+              Attention : La suppression de <strong className="text-white">"{tournamentToDelete.name}"</strong> effacera définitivement ce tournoi et ses matchs associés de la base de données.
+            </span>
+          ) : ""
+        }
+        confirmText="Supprimer définitivement"
+        variant="danger"
+        icon={Trash2}
+        isLoading={deleting}
+      />
     </div>
   );
 }
