@@ -2,7 +2,7 @@
 
 Exécute le rituel structuré de résolution pour l'issue spécifiée : `$ARGUMENTS`.
 
-## Instructions pour Claude :
+## Instructions pour Claude / Antigravity :
 
 1. **Vérification de l'argument** :
    * L'argument `$ARGUMENTS` doit être un numéro d'issue GitHub (ex: `20` ou `#20`).
@@ -21,23 +21,22 @@ Exécute le rituel structuré de résolution pour l'issue spécifiée : `$ARGUME
      - 📂 Fichiers exacts à modifier ou créer.
      - 🗄️ Impact base de données (migration nécessaire ?).
      - ⚠️ Cas limites et pièges identifiés.
-     - 🧪 Stratégie de tests prévue.
+     - 🧪 Stratégie de tests TDD prévue.
    * **STOP** : Demande explicitement validation à l'utilisateur avant d'écrire la moindre ligne de code. Ne commence à coder qu'après son accord.
 
-4. **Phase 3 : Implémentation selon l'ordre strict** :
+4. **Phase 3 : Implémentation & TDD Strict** :
    * Ordre : `DB ➜ @hub/shared (rebuild obligatoire !) ➜ Services Bot ➜ Routes API ➜ Web UI ➜ Tests`.
-   * Respecte le typage strict du bot (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`).
-   * Respecte Next.js 16 / React 19 (`await params`, `"use client";`, `<Link>`, pas de `setState` synchrone dans `useEffect`).
+   * **TDD strict avec Verify RED** : écrire le test Vitest d'abord, exécuter et **constater l'échec pour la raison attendue**, puis implémenter le code pour passer au vert.
+   * **Loi d'Airain Anti-Band-Aids** : interdiction formelle de poser des rustines (`?.` sauvages, `as any`, `as unknown as`, `try/catch` vides) pour faire taire les erreurs. Trouver la cause racine.
+   * **Règles Front React 19** : 3 états obligatoires (Skeleton, Error toast, Empty state) et nettoyage strict des abonnements/listeners dans `useEffect`.
 
-5. **Phase 4 : Validation Tests & Build (sans watch)** :
-   * `make test` : vérifie que 100% des tests unitaires passent.
-   * `make lint` : valide 0 erreur TypeScript et ESLint.
-   * `make build` : valide la chaîne de compilation complète.
+5. **Phase 4 : Porte de Vérification (Evidence Before Claims)** :
+   * Interdiction formelle d'affirmer que c'est résolu sans **preuve terminale fraîche** :
+     - `make test` : 100% de succès.
+     - `make lint` : 0 erreur de typage / linting.
+     - `make build` : compilation globale réussie.
 
-6. **Phase 5 : Bilan Final & Livraison (PAS D'AUTO-COMMIT)** :
-   * Vérifie la propreté du `git diff` (aucun `console.log` de debug résiduel).
+6. **Phase 5 : Clôture & Mini-Rapport (PAS D'AUTO-COMMIT)** :
+   * Vérifie la propreté du `git diff` (aucun `console.log` de debug résiduel, aucun `any`).
    * **N'exécute JAMAIS de `git commit` automatiquement.**
-   * Affiche le bilan des modifications et les résultats de tests.
-   * Donne les instructions précises pour tester manuellement en local (`make dev`, URLs à visiter).
-   * Fournit la commande de commit prête à l'emploi pour l'utilisateur :
-     `git commit -m "<type>(<scope>): <message> (#$ARGUMENTS)"`
+   * Affiche le mini-rapport en 5 lignes max (fichiers modifiés, preuves terminales, cas limites testés, URL locale de test, commande de commit prête à copier).
