@@ -1,5 +1,6 @@
 import { Client, TextChannel, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction } from 'discord.js';
 import { supabase } from '../lib/supabase';
+import { tBot, getGuildLanguage } from '../i18n';
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -43,14 +44,16 @@ export class RegistrationService {
       const channel = await client.channels.fetch(tournament.discord_registration_channel_id).catch(() => null) as TextChannel | null;
       if (!channel) throw new Error(`Impossible de trouver le salon Discord avec l'ID ${tournament.discord_registration_channel_id}. Vérifiez que le bot y a accès.`);
 
+      const lang = await getGuildLanguage(tournament.guild_id, tournament.id);
+
       const embed = {
-        title: `📝 Inscriptions: ${tournament.name}`,
-        description: tournament.description || `Cliquez sur le bouton ci-dessous pour inscrire votre équipe. Le capitaine doit obligatoirement enregistrer le roster principal (4 joueurs minimum, dont lui-même) incluant les Codes Amis Valides.`,
+        title: tBot(lang, 'registration.embedTitle', { name: tournament.name }),
+        description: tournament.description || tBot(lang, 'registration.embedDescription'),
         color: 0x5865F2,
         fields: [
           {
-            name: "Règle Code Ami",
-            value: "Format attendu: **`SW-XXXX-XXXX-XXXX`**. (ex: `Pseudo SW-1234-5678-9012`). \n*Note: le séparateur entre le pseudo et le code ami n'est pas obligatoire.*"
+            name: tBot(lang, 'registration.friendCodeRuleTitle'),
+            value: tBot(lang, 'registration.friendCodeRuleValue')
           }
         ],
         footer: {
@@ -58,13 +61,20 @@ export class RegistrationService {
         }
       };
 
+      const toggleLang = lang === 'fr' ? 'en' : 'fr';
+      const toggleLabel = lang === 'fr' ? 'View in 🇬🇧 English' : 'Voir en 🇫🇷 Français';
+
       const row = new ActionRowBuilder<ButtonBuilder>()
         .addComponents(
           new ButtonBuilder()
             .setCustomId(`btn_register_${tournament.id}`)
-            .setLabel("S'inscrire (Main Roster)")
+            .setLabel(tBot(lang, 'registration.buttonLabel'))
             .setStyle(ButtonStyle.Primary)
-            .setEmoji("📝")
+            .setEmoji("📝"),
+          new ButtonBuilder()
+            .setCustomId(`btn_toggle_lang_${tournament.id}_${toggleLang}`)
+            .setLabel(toggleLabel)
+            .setStyle(ButtonStyle.Secondary)
         );
 
       await channel.send({ embeds: [embed], components: [row] });
@@ -80,6 +90,8 @@ export class RegistrationService {
     if (interaction.isButton()) {
       if (interaction.customId.startsWith('btn_register_')) {
         await this.handleRegisterButton(interaction);
+      } else if (interaction.customId.startsWith('btn_toggle_lang_')) {
+        await this.handleToggleLangButton(interaction);
       } else if (interaction.customId.startsWith('btn_add_subs_')) {
         await this.handleSubsButton(interaction);
       } else if (interaction.customId.startsWith('btn_skip_subs_')) {
@@ -94,8 +106,48 @@ export class RegistrationService {
     }
   }
 
+  private static async handleToggleLangButton(interaction: any) {
+    const parts = interaction.customId.split('_');
+    const tournamentId = parts[3];
+    const targetLang = (parts[4] as 'fr' | 'en') || 'en';
+
+    try {
+      const { data: tournament } = await supabase
+        .from('tournaments')
+        .select('*')
+        .eq('id', tournamentId)
+        .single();
+
+      if (!tournament || tournament.guild_id !== interaction.guildId) {
+        return interaction.reply({ content: "❌ Tournoi introuvable ou accès non autorisé.", ephemeral: true });
+      }
+
+      const embed = {
+        title: tBot(targetLang, 'registration.embedTitle', { name: tournament.name }),
+        description: tournament.description || tBot(targetLang, 'registration.embedDescription'),
+        color: 0x5865F2,
+        fields: [
+          {
+            name: tBot(targetLang, 'registration.friendCodeRuleTitle'),
+            value: tBot(targetLang, 'registration.friendCodeRuleValue')
+          }
+        ],
+        footer: {
+          text: `Tournoi ID: ${tournament.id}`
+        }
+      };
+
+      return interaction.reply({ embeds: [embed], ephemeral: true });
+    } catch (e) {
+      console.error("[RegistrationService] Language toggle error:", e);
+    }
+
+    return interaction.reply({ content: "Language preference updated.", ephemeral: true });
+  }
+
   private static async handleRegisterButton(interaction: any) {
     const tournamentId = interaction.customId.split('_').pop();
+    const lang = await getGuildLanguage(interaction.guildId, tournamentId);
 
     const { data: tournament, error } = await supabase
       .from('tournaments')
@@ -104,7 +156,7 @@ export class RegistrationService {
       .single();
 
     if (error || !tournament) {
-      return interaction.reply({ content: "❌ Impossible de trouver ce tournoi.", ephemeral: true });
+      return interaction.reply({ content: tBot(lang, 'registration.tournamentNotFound'), ephemeral: true });
     }
 
     const now = new Date();
@@ -112,28 +164,28 @@ export class RegistrationService {
     const checkinStart = tournament.checkin_start_at ? new Date(tournament.checkin_start_at) : null;
 
     if ((checkinStart && now >= checkinStart) || (startDate && now >= startDate) || tournament.status === 'ACTIVE' || tournament.status === 'COMPLETED' || tournament.status === 'ARCHIVED') {
-      return interaction.reply({ content: "❌ Les inscriptions sont terminées pour ce tournoi.", ephemeral: true });
+      return interaction.reply({ content: tBot(lang, 'registration.closed'), ephemeral: true });
     }
 
     const modal = new ModalBuilder()
       .setCustomId(`modal_register_main_${tournamentId}`)
-      .setTitle('Inscription - Roster Principal');
+      .setTitle(tBot(lang, 'registration.modalTitle'));
 
     modal.addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId('team_name').setLabel('Nom de l\'équipe').setStyle(TextInputStyle.Short).setRequired(true)
+        new TextInputBuilder().setCustomId('team_name').setLabel(tBot(lang, 'registration.teamNameLabel')).setStyle(TextInputStyle.Short).setRequired(true)
       ),
       new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId('player1').setLabel('Capitaine (Toi) [Pseudo + CA]').setStyle(TextInputStyle.Short).setPlaceholder('Ex: Pseudo - SW-XXXX-XXXX-XXXX').setRequired(true)
+        new TextInputBuilder().setCustomId('player1').setLabel(tBot(lang, 'registration.captainLabel')).setStyle(TextInputStyle.Short).setPlaceholder(tBot(lang, 'registration.playerPlaceholder')).setRequired(true)
       ),
       new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId('player2').setLabel('Joueur 2 [Pseudo + CA]').setStyle(TextInputStyle.Short).setPlaceholder('Ex: Pseudo - SW-XXXX-XXXX-XXXX').setRequired(true)
+        new TextInputBuilder().setCustomId('player2').setLabel(tBot(lang, 'registration.playerLabel', { number: 2 })).setStyle(TextInputStyle.Short).setPlaceholder(tBot(lang, 'registration.playerPlaceholder')).setRequired(true)
       ),
       new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId('player3').setLabel('Joueur 3 [Pseudo + CA]').setStyle(TextInputStyle.Short).setPlaceholder('Ex: Pseudo - SW-XXXX-XXXX-XXXX').setRequired(true)
+        new TextInputBuilder().setCustomId('player3').setLabel(tBot(lang, 'registration.playerLabel', { number: 3 })).setStyle(TextInputStyle.Short).setPlaceholder(tBot(lang, 'registration.playerPlaceholder')).setRequired(true)
       ),
       new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId('player4').setLabel('Joueur 4 [Pseudo + CA]').setStyle(TextInputStyle.Short).setPlaceholder('Ex: Pseudo - SW-XXXX-XXXX-XXXX').setRequired(true)
+        new TextInputBuilder().setCustomId('player4').setLabel(tBot(lang, 'registration.playerLabel', { number: 4 })).setStyle(TextInputStyle.Short).setPlaceholder(tBot(lang, 'registration.playerPlaceholder')).setRequired(true)
       )
     );
 
@@ -156,6 +208,7 @@ export class RegistrationService {
 
   private static async handleMainModalSubmit(interaction: any) {
     const tournamentId = interaction.customId.split('_').pop();
+    const lang = await getGuildLanguage(interaction.guildId, tournamentId);
 
     const { data: tournament, error } = await supabase
       .from('tournaments')
@@ -164,7 +217,7 @@ export class RegistrationService {
       .single();
 
     if (error || !tournament) {
-      return interaction.reply({ content: "❌ Impossible de trouver ce tournoi.", ephemeral: true });
+      return interaction.reply({ content: tBot(lang, 'registration.tournamentNotFound'), ephemeral: true });
     }
 
     const now = new Date();
@@ -172,7 +225,7 @@ export class RegistrationService {
     const checkinStart = tournament.checkin_start_at ? new Date(tournament.checkin_start_at) : null;
 
     if ((checkinStart && now >= checkinStart) || (startDate && now >= startDate) || tournament.status === 'ACTIVE' || tournament.status === 'COMPLETED' || tournament.status === 'ARCHIVED') {
-      return interaction.reply({ content: "❌ Les inscriptions sont terminées pour ce tournoi.", ephemeral: true });
+      return interaction.reply({ content: tBot(lang, 'registration.closed'), ephemeral: true });
     }
 
     const teamName = interaction.fields.getTextInputValue('team_name');
@@ -188,14 +241,17 @@ export class RegistrationService {
     for (let i = 0; i < rawPlayers.length; i++) {
       const p = this.parsePlayerInput(rawPlayers[i]);
       if (!p) {
-        errors.push(`Joueur ${i + 1} : Code ami Invalide (attendu: Pseudo SW-XXXX-XXXX-XXXX)`);
+        errors.push(tBot(lang, 'registration.invalidPlayerFc', { number: i + 1 }));
       } else {
         parsedPlayers.push(p);
       }
     }
 
     if (errors.length > 0) {
-      return interaction.reply({ content: `**Erreur Code Ami:**\n${errors.join('\n')}\n*Veuillez recommencer l'inscription en respectant le format.*`, ephemeral: true });
+      return interaction.reply({
+        content: tBot(lang, 'registration.fcErrorTitle', { errors: errors.join('\n') }),
+        ephemeral: true
+      });
     }
 
     // Check duplicate captain
@@ -206,7 +262,7 @@ export class RegistrationService {
       .eq('captain_discord_id', interaction.user.id);
 
     if (count && count > 0) {
-      return interaction.reply({ content: "❌ Vous êtes déjà capitaine d'une équipe inscrite à ce tournoi. Un capitaine ne peut avoir qu'une seule équipe.", ephemeral: true });
+      return interaction.reply({ content: tBot(lang, 'registration.alreadyCaptain'), ephemeral: true });
     }
 
     const cacheKey = `${interaction.user.id}_${tournamentId}`;
@@ -220,18 +276,18 @@ export class RegistrationService {
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId(`btn_add_subs_${tournamentId}`)
-        .setLabel("Ajouter des Remplaçants")
+        .setLabel(tBot(lang, 'registration.addSubs'))
         .setStyle(ButtonStyle.Secondary)
         .setEmoji("➕"),
       new ButtonBuilder()
         .setCustomId(`btn_skip_subs_${tournamentId}`)
-        .setLabel("Terminer l'inscription")
+        .setLabel(tBot(lang, 'registration.finishReg'))
         .setStyle(ButtonStyle.Success)
         .setEmoji("✅")
     );
 
     await interaction.reply({
-      content: `**Roster Principal Validé !**\nAvez-vous des remplaçants (Max 2) à inscrire pour l'équipe **${teamName}** ?`,
+      content: tBot(lang, 'registration.rosterValidated', { teamName }),
       components: [row],
       ephemeral: true
     });
@@ -239,17 +295,18 @@ export class RegistrationService {
 
   private static async handleSubsButton(interaction: any) {
     const tournamentId = interaction.customId.split('_').pop();
+    const lang = await getGuildLanguage(interaction.guildId, tournamentId);
 
     const modal = new ModalBuilder()
       .setCustomId(`modal_register_subs_${tournamentId}`)
-      .setTitle('Inscription - Remplaçants');
+      .setTitle(tBot(lang, 'registration.subModalTitle'));
 
     modal.addComponents(
       new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId('sub1').setLabel('Remplaçant 1 [Pseudo + CA]').setStyle(TextInputStyle.Short).setPlaceholder('Ex: Pseudo - SW-XXXX-XXXX-XXXX').setRequired(false)
+        new TextInputBuilder().setCustomId('sub1').setLabel(tBot(lang, 'registration.subLabel', { number: 1 })).setStyle(TextInputStyle.Short).setPlaceholder(tBot(lang, 'registration.playerPlaceholder')).setRequired(false)
       ),
       new ActionRowBuilder<TextInputBuilder>().addComponents(
-        new TextInputBuilder().setCustomId('sub2').setLabel('Remplaçant 2 [Pseudo + CA]').setStyle(TextInputStyle.Short).setPlaceholder('Ex: Pseudo - SW-XXXX-XXXX-XXXX').setRequired(false)
+        new TextInputBuilder().setCustomId('sub2').setLabel(tBot(lang, 'registration.subLabel', { number: 2 })).setStyle(TextInputStyle.Short).setPlaceholder(tBot(lang, 'registration.playerPlaceholder')).setRequired(false)
       )
     );
 
@@ -263,6 +320,7 @@ export class RegistrationService {
 
   private static async handleSubsModalSubmit(interaction: any) {
     const tournamentId = interaction.customId.split('_').pop();
+    const lang = await getGuildLanguage(interaction.guildId, tournamentId);
 
     const sub1 = interaction.fields.getTextInputValue('sub1');
     const sub2 = interaction.fields.getTextInputValue('sub2');
@@ -272,18 +330,21 @@ export class RegistrationService {
 
     if (sub1 && sub1.trim() !== '') {
       const p = this.parsePlayerInput(sub1);
-      if (!p) errors.push(`Remplaçant 1 invalide (format: Pseudo SW-XXXX-XXXX-XXXX)`);
+      if (!p) errors.push(tBot(lang, 'registration.invalidSubFc', { number: 1 }));
       else parsedSubs.push(p);
     }
 
     if (sub2 && sub2.trim() !== '') {
       const p = this.parsePlayerInput(sub2);
-      if (!p) errors.push(`Remplaçant 2 invalide (format: Pseudo SW-XXXX-XXXX-XXXX)`);
+      if (!p) errors.push(tBot(lang, 'registration.invalidSubFc', { number: 2 }));
       else parsedSubs.push(p);
     }
 
     if (errors.length > 0) {
-      return interaction.reply({ content: `**Erreur Code Ami Remplaçant:**\n${errors.join('\n')}`, ephemeral: true });
+      return interaction.reply({
+        content: tBot(lang, 'registration.subFcErrorTitle', { errors: errors.join('\n') }),
+        ephemeral: true
+      });
     }
 
     await this.finalizeRegistration(interaction, tournamentId, parsedSubs);
@@ -292,11 +353,12 @@ export class RegistrationService {
   private static async finalizeRegistration(interaction: any, tournamentId: string, subs: any[]) {
     await interaction.deferReply({ ephemeral: true });
     try {
+      const lang = await getGuildLanguage(interaction.guildId, tournamentId);
       const cacheKey = `${interaction.user.id}_${tournamentId}`;
       const cachedData = registrationCache.get(cacheKey);
 
       if (!cachedData) {
-        return interaction.editReply({ content: "⚠️ Session d'inscription introuvable ou expirée. Veuillez recommencer." });
+        return interaction.editReply({ content: tBot(lang, 'registration.sessionExpired') });
       }
 
       // Clear cache immediately to prevent double-registration
@@ -317,28 +379,30 @@ export class RegistrationService {
 
       if (teamErr) {
         if (teamErr.message?.includes('unique_captain_per_tournament') || teamErr.code === '23505') {
-          return interaction.editReply({ content: "❌ **Impossible de s'inscrire** : Tu es déjà associé en tant que capitaine à une autre équipe pour ce tournoi !" });
+          return interaction.editReply({ content: tBot(lang, 'registration.alreadyCaptain') });
         }
         throw teamErr;
       }
       if (!team) throw new Error("Équipe non créée");
 
-      // Insert team members — collect errors and report
+      // Batch insert team members (PERF-02)
       const allPlayers = [...cachedData.players, ...subs];
-      const insertErrors: string[] = [];
+      const membersToInsert = allPlayers.map((p, index) => ({
+        team_id: team.id,
+        user_id: index === 0 ? interaction.user.id : null,
+        ingame_name: p.name,
+        is_captain: index === 0,
+        friend_code: p.fc
+      }));
 
-      for (let i = 0; i < allPlayers.length; i++) {
-        const { error: memberErr } = await supabase.from('team_members').insert({
-          team_id: team.id,
-          user_id: i === 0 ? interaction.user.id : null,
-          ingame_name: allPlayers[i].name,
-          is_captain: i === 0 ? true : false,
-          friend_code: allPlayers[i].fc
-        });
-        if (memberErr) {
-          insertErrors.push(`${allPlayers[i].name}: ${memberErr.message}`);
-          console.error("Erreur lors de l'insertion d'un joueur:", memberErr);
-        }
+      const insertErrors: string[] = [];
+      const { error: batchErr } = await supabase
+        .from('team_members')
+        .insert(membersToInsert);
+
+      if (batchErr) {
+        console.error("Erreur lors de l'insertion par lot des joueurs:", batchErr);
+        insertErrors.push(batchErr.message);
       }
 
       // Announce in registration channel
@@ -346,11 +410,17 @@ export class RegistrationService {
         const annChannel = await interaction.client.channels.fetch(tournament.discord_registration_channel_id);
         if (annChannel && annChannel.isTextBased()) {
           const rosterStr = cachedData.players.map((p: any) => `• ${p.name}`).join('\n');
-          const subsStr = subs.length > 0 ? `\n\n**Remplaçants:**\n` + subs.map((s: any) => `• ${s.name}`).join('\n') : '';
+          const subsStr = subs.length > 0
+            ? `${tBot(lang, 'registration.subsHeader')}${subs.map((s: any) => `• ${s.name}`).join('\n')}`
+            : '';
 
           const embed = {
-            title: `🎊 Nouvelle Inscription: ${cachedData.teamName}`,
-            description: `L'équipe **${cachedData.teamName}** vient de s'inscrire !\n\n**Roster Principal:**\n${rosterStr}${subsStr}`,
+            title: tBot(lang, 'registration.newRegistrationAnnouncementTitle', { teamName: cachedData.teamName }),
+            description: tBot(lang, 'registration.newRegistrationAnnouncementDesc', {
+              teamName: cachedData.teamName,
+              roster: rosterStr,
+              subs: subsStr
+            }),
             color: 0x57F287,
             timestamp: new Date().toISOString()
           };
@@ -359,15 +429,15 @@ export class RegistrationService {
       }
 
       const warningStr = insertErrors.length > 0
-        ? `\n\n⚠️ **Avertissement:** ${insertErrors.length} joueur(s) n'ont pas pu être enregistrés suite à une erreur technique. Contactez un TO.`
+        ? tBot(lang, 'registration.technicalWarning', { count: allPlayers.length })
         : '';
 
       const replyEmbed = {
-        title: `✅ Inscription Validée !`,
-        description: `Votre équipe **${cachedData.teamName}** a bien été inscrite au tournoi.${warningStr}`,
+        title: tBot(lang, 'registration.registrationSuccessTitle'),
+        description: `${tBot(lang, 'registration.registrationSuccessDesc', { teamName: cachedData.teamName })}${warningStr}`,
         fields: [
-          { name: "Changement de Pseudo", value: "En attente du checkin", inline: true },
-          { name: "Rôle Capitaine", value: "En attente du checkin", inline: true }
+          { name: tBot(lang, 'registration.nameChangeField'), value: tBot(lang, 'registration.pendingCheckin'), inline: true },
+          { name: tBot(lang, 'registration.captainRoleField'), value: tBot(lang, 'registration.pendingCheckin'), inline: true }
         ],
         color: 0x57F287
       };
@@ -376,7 +446,8 @@ export class RegistrationService {
 
     } catch (e: any) {
       console.error("Erreur lors de la finalisation", e);
-      await interaction.editReply({ content: `❌ Une erreur est survenue: ${e.message}` });
+      const lang = await getGuildLanguage(interaction.guildId, tournamentId);
+      await interaction.editReply({ content: tBot(lang, 'registration.generalError', { message: e.message }) });
     }
   }
 }
