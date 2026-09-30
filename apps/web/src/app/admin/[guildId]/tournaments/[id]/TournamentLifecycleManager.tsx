@@ -7,6 +7,7 @@ import { Rocket, Loader2, AlertOctagon } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 interface Props {
   tournamentId: string;
@@ -33,16 +34,15 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
       });
 
       if (!res.ok) {
-        const errorData = await res.text();
-        throw new Error(errorData || t("admin.botCommunicationError"));
+        throw new Error((await readApiError(res)) ?? t("admin.botCommunicationError"));
       }
 
       toast.success(t("admin.launchedSuccess"));
       setShowLaunchModal(false);
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(t("feedback.launchFailed", { message: err.message }));
+      toast.error(t("feedback.launchFailed", { message: getErrorMessage(err) ?? t("admin.botCommunicationError") }));
     } finally {
       setLoadingLaunch(false);
     }
@@ -58,15 +58,15 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
       });
 
       if (!res.ok) {
-        console.warn("Discord Bot returned non-ok, finishing closure locally.");
+        throw new Error((await readApiError(res)) ?? t("admin.botCommunicationError"));
       }
 
       toast.success(t("admin.closedSuccess"));
       setShowCloseModal(false);
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(t("feedback.closeFailed", { message: err.message }));
+      toast.error(t("feedback.closeFailed", { message: getErrorMessage(err) ?? t("admin.botCommunicationError") }));
     } finally {
       setLoadingClose(false);
     }
@@ -134,6 +134,7 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
         title={t("admin.closeTournament")}
         description={t("admin.closeConfirm")}
         confirmText={t("admin.closeConfirmButton")}
+        confirmPhrase={t("admin.closeConfirmPhrase")}
         variant="danger"
         icon={AlertOctagon}
         isLoading={loadingClose}

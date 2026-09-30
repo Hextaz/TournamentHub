@@ -7,6 +7,7 @@ import Link from "next/link";
 import { CheckCircle2, ChevronLeft } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 export function PhaseConfigClient({ 
   phase, 
@@ -104,8 +105,7 @@ export function PhaseConfigClient({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
       router.refresh();
       if (shouldRedirect) {
@@ -114,9 +114,10 @@ export function PhaseConfigClient({
       } else {
         toast.success(t("feedback.settingsUpdated"));
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      toast.error(e.message ? t("feedback.updateFailed", { message: e.message }) : t("feedback.updateFailedNoDetail"));
+      const message = getErrorMessage(e);
+      toast.error(message ? t("feedback.updateFailed", { message }) : t("feedback.updateFailedNoDetail"));
     } finally {
       setIsSubmitting(false);
     }

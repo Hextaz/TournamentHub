@@ -110,6 +110,7 @@ Ce document consigne l'ensemble des **cas limites**, **invariants de sécurité 
 | **DISC-03** | `closeTournament` | Serveur ou catégorie Discord introuvable (supprimé manuellement). | Warning loggé. Le statut passe quand même à `COMPLETED` en DB. | 🛡️ |
 | **DISC-04** | `syncPhaseChannels` | Une équipe est retirée d'une phase déjà synchronisée. | Les overwrites membres obsolètes (`type === 1`) sont supprimés : un ex-capitaine perd l'accès au salon. | 🛡️ |
 | **DISC-05** | `backgroundDiscordCleanup` | Retrait du rôle Capitaine sur un grand nombre de membres. | Traitement par lots de 5 avec 100 ms de pause (rate limit Discord). Un échec individuel est loggé sans interrompre le lot. | 🛡️ |
+| **DISC-06** | `TournamentLifecycleManager` (web) | Le bot répond en erreur (403, 500) au lancement ou à la clôture. | Le motif renvoyé (`{ error }` JSON ou texte, lu par `readApiError`) s'affiche dans un toast d'erreur et la modale reste ouverte ; aucun toast de succès. La clôture, irréversible, exige de retaper la phrase `admin.closeConfirmPhrase`. | ✅ `apps/web/src/utils/__tests__/errors.test.ts` (lecture du motif) · 🛡️ (UI) |
 
 ---
 

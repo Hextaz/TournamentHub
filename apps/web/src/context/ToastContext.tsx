@@ -75,7 +75,6 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       {/* Toast Container */}
       <div
-        aria-live="polite"
         className="fixed bottom-5 right-5 z-[9999] flex flex-col gap-2 max-w-md w-full pointer-events-none px-4 sm:px-0"
       >
         {toasts.map((item) => {
@@ -99,6 +98,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
           return (
             <div
               key={item.id}
+              role={item.type === "error" ? "alert" : "status"}
               className={`pointer-events-auto flex items-start gap-3 p-4 rounded-xl border shadow-xl backdrop-blur-md transition-all duration-300 transform translate-y-0 ${bgClass}`}
             >
               <div className="mt-0.5">{icon}</div>

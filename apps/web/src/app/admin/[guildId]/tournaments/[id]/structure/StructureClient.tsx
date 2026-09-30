@@ -8,6 +8,7 @@ import Link from "next/link";
 import { useToast } from "@/context/ToastContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 export function StructureClient({
   tournamentId,
@@ -22,7 +23,7 @@ export function StructureClient({
   const { toast } = useToast();
   const { t } = useTranslation();
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
-  const [phaseToDelete, setPhaseToDelete] = useState<any>(null);
+  const [phaseToDelete, setPhaseToDelete] = useState<{ id: string; name: string } | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
 
   const toggleDropdown = (id: string) => {
@@ -53,7 +54,7 @@ export function StructureClient({
       const newPhase = await res.json();
       toast.success(t("adminStructure.createdSuccess"));
       router.push(`/admin/${guildId}/tournaments/${tournamentId}/structure/${newPhase.id}`);
-    } catch(e: any) {
+    } catch (e: unknown) {
       console.error(e);
       toast.error(t("feedback.createPhaseFailed"));
     }
@@ -69,17 +70,16 @@ export function StructureClient({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
       setDropdownOpen(null);
       setPhaseToDelete(null);
       toast.success(t("adminStructure.deletedSuccess"));
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(t("feedback.deleteFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.deleteFailed", { message: getErrorMessage(err) ?? t("common.unknown") }));
     } finally {
       setIsDeleting(null);
     }

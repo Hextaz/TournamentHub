@@ -7,6 +7,7 @@ import { Square, Clock, ShieldAlert, Calendar } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 interface Props {
   tournament: any;
@@ -20,7 +21,6 @@ export function CheckinTimeManager({ tournament, guildId }: Props) {
   const dateLocale = locale === "en" ? "en-US" : "fr-FR";
   const [loadingStop, setLoadingStop] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(new Date());
 
   // Tick for countdown accuracy
@@ -45,7 +45,6 @@ export function CheckinTimeManager({ tournament, guildId }: Props) {
   const isDraft = tournament.status === "DRAFT";
 
   const handleStopCheckin = async () => {
-    setError(null);
     setLoadingStop(true);
     try {
       const res = await botApiFetch(`/api/tournaments/${tournament.id}/checkin/stop`, {
@@ -55,17 +54,14 @@ export function CheckinTimeManager({ tournament, guildId }: Props) {
       });
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || t("admin.botCommunicationError"));
+        throw new Error((await readApiError(res)) ?? t("admin.botCommunicationError"));
       }
 
       setShowStopModal(false);
       toast.success(t("adminCheckin.stoppedSuccess"));
       router.refresh();
-    } catch (e: any) {
-      const errMsg = e.message || t("adminCheckin.stopFailed");
-      setError(errMsg);
-      toast.error(errMsg);
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) ?? t("adminCheckin.stopFailed"));
     } finally {
       setLoadingStop(false);
     }
@@ -105,12 +101,6 @@ export function CheckinTimeManager({ tournament, guildId }: Props) {
           </span>
         </div>
       </div>
-
-      {error && (
-        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium">
-          {error}
-        </div>
-      )}
 
       {/* 1. STATE: RUNNING (SHOW KILL SWITCH) */}
       {isCheckinRunning && checkinEnd && (
