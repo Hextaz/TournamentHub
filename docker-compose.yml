@@ -8,7 +8,10 @@ services:
     command: npm run dev --workspace=@hub/bot
     volumes:
       - .:/app
+      # node_modules de l'image : ne pas laisser ceux de l'hôte (arborescence hoistée différente) les masquer.
       - /app/node_modules
+      - /app/apps/bot/node_modules
+      - /app/apps/web/node_modules
     network_mode: "host"
     environment:
       - NODE_ENV=development
@@ -23,7 +26,10 @@ services:
     command: npm run dev --workspace=@hub/web
     volumes:
       - .:/app
+      # node_modules de l'image : ne pas laisser ceux de l'hôte (arborescence hoistée différente) les masquer.
       - /app/node_modules
+      - /app/apps/bot/node_modules
+      - /app/apps/web/node_modules
     network_mode: "host"
     environment:
       - NODE_ENV=development
