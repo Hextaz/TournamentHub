@@ -8,6 +8,8 @@ import { CheckCircle2, XCircle, UserPlus, Trash2, Search, Pencil, Sparkles } fro
 import { useToast } from "@/context/ToastContext";
 import { PromptModal } from "@/components/ui/PromptModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { MAX_FAKE_TEAMS } from "@hub/shared";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { tournamentId: string; guildId: string; initialTeams: any[] }) {
   const router = useRouter();
@@ -101,8 +103,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
       const data = await res.json();
@@ -113,16 +114,16 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       setIsAdding(false);
       toast.success(t("feedback.teamAdded"));
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(t("feedback.addTeamFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.addTeamFailed", { message: getErrorMessage(err) ?? t("common.unknown") }));
     }
   };
 
   const handleGenerateFakeTeamsSubmit = async (inputStr: string) => {
     const count = parseInt(inputStr, 10);
-    if (isNaN(count) || count < 1 || count > 128) {
-      toast.warning(t("feedback.fakeTeamsInvalidCount", { min: 1, max: 128 }));
+    if (isNaN(count) || count < 1 || count > MAX_FAKE_TEAMS) {
+      toast.warning(t("feedback.fakeTeamsInvalidCount", { min: 1, max: MAX_FAKE_TEAMS }));
       return;
     }
 
@@ -135,18 +136,18 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
-      const newTeams = await res.json();
+      const newTeams: unknown[] = await res.json();
       setTeams(prev => [...prev, ...newTeams]);
       setShowFakeModal(false);
-      toast.success(t("feedback.fakeTeamsAdded", { count }));
+      // Nombre réellement créé par le bot (qui plafonne à MAX_FAKE_TEAMS), pas le nombre demandé.
+      toast.success(t("feedback.fakeTeamsAdded", { count: newTeams.length }));
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(t("feedback.fakeTeamsFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.fakeTeamsFailed", { message: getErrorMessage(err) ?? t("common.unknown") }));
     } finally {
       setIsGeneratingFake(false);
     }
@@ -161,16 +162,15 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
       setTeams(teams.map(t => t.id === teamId ? { ...t, is_checked_in: !currentStatus } : t));
       toast.success(!currentStatus ? t("feedback.teamCheckedIn") : t("feedback.teamCheckinCancelled"));
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(t("feedback.updateFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.updateFailed", { message: getErrorMessage(err) ?? t("common.unknown") }));
     }
   };
 
@@ -199,8 +199,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
       const data = await res.json();
@@ -211,9 +210,9 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       setSearchTerm("");
       toast.success(t("feedback.teamUpdated"));
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(t("feedback.editTeamFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.editTeamFailed", { message: getErrorMessage(err) ?? t("common.unknown") }));
     }
   };
 
@@ -225,17 +224,16 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
       setTeams(teams.filter(t => t.id !== teamToDelete.id));
       setTeamToDelete(null);
       toast.success(t("feedback.teamDeleted"));
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(t("feedback.deleteTeamFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.deleteTeamFailed", { message: getErrorMessage(err) ?? t("common.unknown") }));
     }
   };
 
@@ -714,7 +712,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
         defaultValue="8"
         inputType="number"
         min={1}
-        max={128}
+        max={MAX_FAKE_TEAMS}
         placeholder={t("adminParticipants.fakeTeamsPlaceholder")}
         confirmText={t("adminParticipants.fakeTeamsConfirm")}
         isLoading={isGeneratingFake}

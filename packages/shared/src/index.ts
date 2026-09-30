@@ -13,6 +13,9 @@ export type PhaseType = "ROUND_ROBIN" | "SINGLE_ELIM" | "SWISS" | "DOUBLE_ELIM";
 export const LocaleSchema = z.enum(["fr", "en"]);
 export type Locale = z.infer<typeof LocaleSchema>;
 
+// Plafond de génération d'équipes fictives (back-office de test) : borne l'UI et l'API bot.
+export const MAX_FAKE_TEAMS = 64;
+
 // Common Domain Interfaces
 export interface Tournament {
   id: string;
