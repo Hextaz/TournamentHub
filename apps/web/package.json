@@ -4,14 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "npm run build --workspace=@hub/shared",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run"
   },
   "dependencies": {
-    "@hub/shared": "*",
     "@hello-pangea/dnd": "^18.0.1",
     "@hookform/resolvers": "^5.2.2",
+    "@hub/shared": "*",
     "@supabase/supabase-js": "^2.103.2",
     "dayjs": "^1.11.20",
     "jsonwebtoken": "^9.0.3",
@@ -33,6 +35,7 @@
     "eslint-config-next": "16.2.2",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "vitest": "^2.1.8"
   }
 }

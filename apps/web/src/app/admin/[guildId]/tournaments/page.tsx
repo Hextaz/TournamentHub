@@ -11,6 +11,7 @@ import { useSession } from "next-auth/react";
 import { botApiFetch } from '@/utils/api';
 import { useToast } from "@/context/ToastContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { useTranslation } from "@/i18n/LanguageContext";
 
 const formSchema = z.object({
   name: z.string().min(3, "Le nom doit contenir au moins 3 caractères"),
@@ -27,6 +28,7 @@ export default function TournamentsPage({
   const router = useRouter();
   const { toast } = useToast();
   const { guildId } = use(params);
+  const { t, locale } = useTranslation();
 
   const [tournaments, setTournaments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,15 +68,15 @@ export default function TournamentsPage({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Accès refusé par le serveur.");
+        throw new Error(errorData.error || t("adminTournaments.deleteForbidden"));
       }
 
       setTournamentToDelete(null);
-      toast.success("Tournoi supprimé avec succès !");
+      toast.success(t("adminTournaments.deletedSuccess"));
       await fetchTournaments();
     } catch (err: any) {
       console.error("Delete Error:", err);
-      toast.error(err.message || "Erreur de suppression");
+      toast.error(t("feedback.deleteFailed", { message: err.message || String(err) }));
     } finally {
       setDeleting(false);
     }
@@ -107,14 +109,14 @@ export default function TournamentsPage({
 
       setShowCreateModal(false);
       reset();
-      toast.success("Tournoi créé avec succès !");
+      toast.success(t("adminTournaments.createdSuccess"));
       fetchTournaments();
 
       router.push(`/admin/${guildId}/tournaments/${created.id}`);
 
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Erreur lors de la création du tournoi");
+      toast.error(t("feedback.createTournamentFailed", { message: err.message || String(err) }));
     } finally {
       setCreating(false);
     }
@@ -124,15 +126,15 @@ export default function TournamentsPage({
     <div className="p-6 md:p-8 w-full max-w-[1600px] mx-auto space-y-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">🏆 Gestion des Tournois</h1>
-          <p className="text-slate-400">Gérez le tournoi en cours et lancez de nouvelles éditions.</p>
+          <h1 className="text-3xl font-bold text-white mb-2">{t("adminTournaments.title")}</h1>
+          <p className="text-slate-400">{t("adminTournaments.subtitle")}</p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
           className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors"
         >
           <Plus className="w-5 h-5" />
-          Créer un Tournoi
+          {t("adminTournaments.createButton")}
         </button>
       </div>
 
@@ -140,7 +142,7 @@ export default function TournamentsPage({
         <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-xl p-4 flex gap-4 items-center text-yellow-500">
           <AlertTriangle className="w-6 h-6 shrink-0" />
           <p>
-            <strong>Note :</strong> Le tournoi <strong>{activePublishedTournament.name}</strong> est actuellement en cours ou actif. Vous pouvez préparer un nouveau brouillon, mais sa publication (enregistrement de dates ou lancement de check-in) archivera l'édition en cours.
+            <strong>{t("common.note")}</strong> {t("adminTournaments.activeNotice", { name: activePublishedTournament.name })}
           </p>
         </div>
       )}
@@ -166,8 +168,8 @@ export default function TournamentsPage({
                     <h2 className="text-2xl font-bold text-white leading-tight">{tournament.name}</h2>
                   </div>
                   <button
-                    onClick={() => setTournamentToDelete(tournament)}
-                    title="Supprimer"
+                    onClick={() => setTournamentToDelete({ id: tournament.id, name: tournament.name })}
+                    title={t("adminTournaments.deleteTitle")}
                     className="p-2 ml-4 bg-slate-700/50 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors shrink-0 cursor-pointer"
                   >
                     <Trash2 className="w-5 h-5" />
@@ -178,7 +180,7 @@ export default function TournamentsPage({
                 )}
                 <div className="flex flex-wrap gap-4 text-sm text-slate-500">
                   <span>ID: {tournament.id.split('-')[0]}...</span>
-                  <span>📅 {tournament.start_at ? new Date(tournament.start_at).toLocaleDateString("fr-FR") : "Brouillon"}</span>
+                  <span>📅 {tournament.start_at ? new Date(tournament.start_at).toLocaleDateString(locale === "en" ? "en-US" : "fr-FR") : t("adminTournaments.draft")}</span>
                 </div>
               </div>
               <div className="p-4 bg-slate-900/50">
@@ -186,7 +188,7 @@ export default function TournamentsPage({
                   onClick={() => router.push(`/admin/${guildId}/tournaments/${tournament.id}`)}
                   className="w-full bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-xl font-bold transition-colors flex justify-center items-center gap-2"
                 >
-                  <Settings className="w-5 h-5" /> Salle des Machines
+                  <Settings className="w-5 h-5" /> {t("adminTournaments.controlRoom")}
                 </button>
               </div>
             </div>
@@ -195,16 +197,16 @@ export default function TournamentsPage({
       ) : (
         <div className="bg-slate-800/30 border border-slate-700/50 border-dashed rounded-2xl p-12 text-center">
           <Trophy className="w-16 h-16 text-slate-600 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-slate-300 mb-2">Aucun tournoi n'est actif</h2>
+          <h2 className="text-xl font-bold text-slate-300 mb-2">{t("adminTournaments.noActiveTitle")}</h2>
           <p className="text-slate-500 max-w-md mx-auto mb-6">
-            Votre serveur est en sommeil. Créez un nouveau tournoi pour démarrer les inscriptions et le setup des salons Discord.
+            {t("adminTournaments.noActiveDesc")}
           </p>
           <button
             onClick={() => setShowCreateModal(true)}
             className="bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 mx-auto transition-colors"
           >
             <Plus className="w-5 h-5" />
-            Créer un Brouillon de Tournoi
+            {t("adminTournaments.createDraftButton")}
           </button>
         </div>
       )}
@@ -213,34 +215,34 @@ export default function TournamentsPage({
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 animate-in fade-in">
           <div className="bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl max-w-md w-full overflow-hidden">
             <div className="p-6 border-b border-slate-800 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-white">Nouvelle Édition</h2>
+              <h2 className="text-xl font-bold text-white">{t("adminTournaments.newEditionModal")}</h2>
               <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-white">✕</button>
             </div>
 
             <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Nom du Tournoi <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">{t("adminTournaments.tournamentNameLabel")} <span className="text-red-500">*</span></label>
                 <input
                   type="text"
                   {...register("name")}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white outline-none focus:border-blue-500"
-                  placeholder="Ex: Splatoon Cup Series #4"
+                  placeholder={t("adminTournaments.namePlaceholder")}
                 />
                 {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name.message}</p>}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Description (Optionnelle)</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">{t("adminTournaments.descLabel")}</label>
                 <textarea
                   {...register("description")}
                   className="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-white outline-none focus:border-blue-500 h-28 resize-none"
-                  placeholder="Règles ou sous-titre de l'évènement..."
+                  placeholder={t("adminTournaments.descPlaceholder")}
                 />
               </div>
 
               <div className="bg-blue-950/40 border border-blue-800/50 rounded-lg p-4 flex gap-3 text-sm text-blue-400 my-4">
                 <AlertTriangle className="w-5 h-5 shrink-0 text-blue-400" />
-                <p>Le tournoi sera créé sous statut <strong>DRAFT</strong>. Vous pourrez configurer ses salons, phases et planification horaire ultérieurement.</p>
+                <p>{t("adminTournaments.draftWarning")}</p>
               </div>
 
               <div className="flex gap-3 pt-2">
@@ -249,14 +251,14 @@ export default function TournamentsPage({
                   onClick={() => setShowCreateModal(false)}
                   className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 px-4 py-2 rounded-xl font-medium transition-colors"
                 >
-                  Annuler
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
                   className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 disabled:text-white/50 text-white px-4 py-2 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-blue-900/20"
                 >
-                  {creating ? <><Loader2 className="w-5 h-5 animate-spin" /> Création...</> : "🚀 Créer Brouillon"}
+                  {creating ? <><Loader2 className="w-5 h-5 animate-spin" /> {t("adminTournaments.creating")}</> : t("adminTournaments.createDraftSubmit")}
                 </button>
               </div>
             </form>
@@ -269,15 +271,9 @@ export default function TournamentsPage({
         isOpen={!!tournamentToDelete}
         onClose={() => setTournamentToDelete(null)}
         onConfirm={handleDelete}
-        title="Supprimer le tournoi"
-        description={
-          tournamentToDelete ? (
-            <span>
-              Êtes-vous sûr de vouloir supprimer définitivement le tournoi <strong className="text-white">"{tournamentToDelete.name}"</strong> ? Cette action est irréversible et supprimera l'ensemble de ses matchs et données.
-            </span>
-          ) : ""
-        }
-        confirmText="Supprimer définitivement"
+        title={t("adminTournaments.deleteModalTitle")}
+        description={tournamentToDelete ? t("adminTournaments.deleteConfirm", { name: tournamentToDelete.name }) : ""}
+        confirmText={t("common.deletePermanently")}
         variant="danger"
         icon={Trash2}
         isLoading={deleting}

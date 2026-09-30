@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Loader2, X, Sparkles } from "lucide-react";
+import { useTranslation } from "@/i18n/LanguageContext";
 
 interface PromptModalProps {
   isOpen: boolean;
@@ -30,10 +31,11 @@ export function PromptModal({
   inputType = "text",
   min,
   max,
-  confirmText = "Valider",
-  cancelText = "Annuler",
+  confirmText,
+  cancelText,
   isLoading = false,
 }: PromptModalProps) {
+  const { t } = useTranslation();
   const [value, setValue] = useState(defaultValue);
   const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
   const [prevDefaultValue, setPrevDefaultValue] = useState(defaultValue);
@@ -87,7 +89,7 @@ export function PromptModal({
         <button
           onClick={onClose}
           disabled={isLoading}
-          aria-label="Fermer"
+          aria-label={t("common.close")}
           className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50"
         >
           <X className="w-5 h-5" />
@@ -131,7 +133,7 @@ export function PromptModal({
               disabled={isLoading}
               className="px-4 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 transition-colors disabled:opacity-50 cursor-pointer"
             >
-              {cancelText}
+              {cancelText ?? t("common.cancel")}
             </button>
             <button
               type="submit"
@@ -139,7 +141,7 @@ export function PromptModal({
               className="flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold shadow-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 focus:ring-offset-slate-900 disabled:opacity-50 cursor-pointer"
             >
               {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-              {confirmText}
+              {confirmText ?? t("common.validate")}
             </button>
           </div>
         </form>

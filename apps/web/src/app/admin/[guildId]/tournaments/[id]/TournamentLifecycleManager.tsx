@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Rocket, Loader2, AlertOctagon } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { useTranslation } from "@/i18n/LanguageContext";
 
 interface Props {
   tournamentId: string;
@@ -16,6 +17,7 @@ interface Props {
 export function TournamentLifecycleManager({ tournamentId, guildId, status }: Props) {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [loadingLaunch, setLoadingLaunch] = useState(false);
   const [loadingClose, setLoadingClose] = useState(false);
   const [showLaunchModal, setShowLaunchModal] = useState(false);
@@ -32,15 +34,15 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
 
       if (!res.ok) {
         const errorData = await res.text();
-        throw new Error(errorData || "Erreur de communication avec le bot Discord");
+        throw new Error(errorData || t("admin.botCommunicationError"));
       }
 
-      toast.success("Le tournoi a été lancé avec succès !");
+      toast.success(t("admin.launchedSuccess"));
       setShowLaunchModal(false);
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Erreur lors du lancement");
+      toast.error(t("feedback.launchFailed", { message: err.message }));
     } finally {
       setLoadingLaunch(false);
     }
@@ -59,12 +61,12 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
         console.warn("Discord Bot returned non-ok, finishing closure locally.");
       }
 
-      toast.success("Le tournoi a été clôturé et archivé avec succès.");
+      toast.success(t("admin.closedSuccess"));
       setShowCloseModal(false);
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Erreur lors de la clôture");
+      toast.error(t("feedback.closeFailed", { message: err.message }));
     } finally {
       setLoadingClose(false);
     }
@@ -73,7 +75,7 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
   if (status === "COMPLETED" || status === "ARCHIVED") {
     return (
       <div className="bg-slate-800/50 border border-slate-700 p-4 rounded-xl flex items-center mb-6">
-        <span className="text-slate-400 font-medium">Ce tournoi a été clôturé et archivé. L'infrastructure Discord a été nettoyée.</span>
+        <span className="text-slate-400 font-medium">{t("admin.archivedNotice")}</span>
       </div>
     );
   }
@@ -82,8 +84,8 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
     <>
       <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white mb-1">Cycle de Vie du Tournoi</h2>
-          <p className="text-slate-400 text-sm">Contrôlez l'état d'avancement et gérez automatiquement l'infrastructure Discord de l'évènement.</p>
+          <h2 className="text-xl font-bold text-white mb-1">{t("admin.lifecycleTitle")}</h2>
+          <p className="text-slate-400 text-sm">{t("admin.lifecycleDesc")}</p>
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-3">
@@ -94,7 +96,7 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-lg transition-colors cursor-pointer"
             >
               {loadingLaunch ? <Loader2 className="w-5 h-5 animate-spin" /> : <Rocket className="w-5 h-5" />}
-              Lancer le Tournoi
+              {t("admin.launchTournament")}
             </button>
           )}
 
@@ -105,7 +107,7 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
               className="flex items-center gap-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-lg transition-colors cursor-pointer"
             >
               {loadingClose ? <Loader2 className="w-5 h-5 animate-spin" /> : <AlertOctagon className="w-5 h-5" />}
-              Clôturer le Tournoi
+              {t("admin.closeTournament")}
             </button>
           )}
         </div>
@@ -116,9 +118,9 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
         isOpen={showLaunchModal}
         onClose={() => setShowLaunchModal(false)}
         onConfirm={handleLaunch}
-        title="Lancer le Tournoi"
-        description="Êtes-vous sûr de vouloir lancer le tournoi ? Cela créera automatiquement une catégorie Discord et annoncera le début officiel de l'évènement."
-        confirmText="Lancer le Tournoi"
+        title={t("admin.launchTournament")}
+        description={t("admin.launchConfirm")}
+        confirmText={t("admin.launchTournament")}
         variant="primary"
         icon={Rocket}
         isLoading={loadingLaunch}
@@ -129,9 +131,9 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
         isOpen={showCloseModal}
         onClose={() => setShowCloseModal(false)}
         onConfirm={handleClose}
-        title="Clôturer le Tournoi"
-        description="Êtes-vous sûr de vouloir clôturer ce tournoi ? Cette action archivera le tournoi et supprimera définitivement les salons et la catégorie Discord associés."
-        confirmText="Clôturer définitivement"
+        title={t("admin.closeTournament")}
+        description={t("admin.closeConfirm")}
+        confirmText={t("admin.closeConfirmButton")}
         variant="danger"
         icon={AlertOctagon}
         isLoading={loadingClose}

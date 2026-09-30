@@ -1,4 +1,4 @@
-.PHONY: install dev dev-bot dev-web dev-stop dev-build dev-logs supabase-start supabase-stop db-init env-init init lint build help
+.PHONY: install dev dev-bot dev-bot-start bot-start dev-bot-stop bot-stop dev-web dev-web-start web-start dev-web-stop web-stop dev-stop dev-build dev-logs supabase-start supabase-stop db-init env-init init lint build help
 
 help:
 	@echo "Commandes disponibles :"
@@ -10,10 +10,12 @@ help:
 	@echo "  make db-init        - Applique le schéma SQL schema.sql sur la base de données locale"
 	@echo "  make dev            - Lance le Bot et Next.js en arrière-plan (Docker Compose -d)"
 	@echo "  make dev-logs       - Affiche les logs en temps réel des conteneurs de dev"
-	@echo "  make dev-bot        - Lance uniquement le bot Discord de Dev dans Docker Compose"
-	@echo "  make dev-web        - Lance uniquement le site Next.js dans Docker Compose"
+	@echo "  make dev-bot        - Lance uniquement le bot Discord de Dev (alias: bot-start)"
+	@echo "  make dev-bot-stop   - Arrête uniquement le bot Discord de Dev (alias: bot-stop)"
+	@echo "  make dev-web        - Lance uniquement le site Next.js dans Docker Compose (alias: web-start)"
+	@echo "  make dev-web-stop   - Arrête uniquement le site Next.js (alias: web-stop)"
 	@echo "  make dev-build      - Reconstruit les images de développement (après ajout de paquets npm)"
-	@echo "  make dev-stop       - Arrête les conteneurs du Bot et de Next.js"
+	@echo "  make dev-stop       - Arrête l'ensemble des conteneurs (Bot et Next.js)"
 	@echo "  make lint           - Valide les types du bot et lint le code du web"
 	@echo "  make build          - Compile le bot et le projet web"
 
@@ -57,10 +59,28 @@ dev-bot:
 	docker compose up -d bot-dev
 	@echo "👉 Le bot tourne en arrière-plan. Utilisez 'make dev-logs' pour voir les logs."
 
+dev-bot-start: dev-bot
+bot-start: dev-bot
+
+dev-bot-stop:
+	@echo "🛑 Arrêt du bot Discord local..."
+	docker compose stop bot-dev
+
+bot-stop: dev-bot-stop
+
 dev-web:
 	@echo "🖥️ Démarrage de Next.js local dans Docker en arrière-plan..."
 	docker compose up -d web-dev
 	@echo "👉 Next.js tourne en arrière-plan. Utilisez 'make dev-logs' pour voir les logs."
+
+dev-web-start: dev-web
+web-start: dev-web
+
+dev-web-stop:
+	@echo "🛑 Arrêt de Next.js local..."
+	docker compose stop web-dev
+
+web-stop: dev-web-stop
 
 dev-stop:
 	@echo "🛑 Arrêt des conteneurs de développement..."

@@ -2,6 +2,7 @@
 
 import React, { useEffect } from "react";
 import { AlertCircle, AlertTriangle, Info, CheckCircle2, Loader2, X } from "lucide-react";
+import { useTranslation } from "@/i18n/LanguageContext";
 
 interface ConfirmModalProps {
   isOpen: boolean;
@@ -22,12 +23,13 @@ export function ConfirmModal({
   onConfirm,
   title,
   description,
-  confirmText = "Confirmer",
-  cancelText = "Annuler",
+  confirmText,
+  cancelText,
   variant = "primary",
   isLoading = false,
   icon: CustomIcon,
 }: ConfirmModalProps) {
+  const { t } = useTranslation();
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && isOpen && !isLoading) {
@@ -75,7 +77,7 @@ export function ConfirmModal({
         <button
           onClick={onClose}
           disabled={isLoading}
-          aria-label="Fermer"
+          aria-label={t("common.close")}
           className="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors disabled:opacity-50"
         >
           <X className="w-5 h-5" />
@@ -103,7 +105,7 @@ export function ConfirmModal({
             disabled={isLoading}
             className="px-4 py-2 rounded-xl text-sm font-medium text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border border-slate-700/60 transition-colors disabled:opacity-50 cursor-pointer"
           >
-            {cancelText}
+            {cancelText ?? t("common.cancel")}
           </button>
           <button
             type="button"
@@ -112,7 +114,7 @@ export function ConfirmModal({
             className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-semibold shadow-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 cursor-pointer ${confirmBtnClass}`}
           >
             {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {confirmText}
+            {confirmText ?? t("common.confirm")}
           </button>
         </div>
       </div>

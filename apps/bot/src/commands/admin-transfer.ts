@@ -6,21 +6,25 @@ import {
   GuildMember,
 } from "discord.js";
 import { supabase } from "../lib/supabase";
+import { tBot, getGuildLanguage, discordLocalizations } from "../i18n";
 
 export const data = new SlashCommandBuilder()
   .setName("admin-transfer")
-  .setDescription("[TO] Transférer le rôle de capitaine d'une équipe")
+  .setDescription(tBot("en", "transfer.commandDescription"))
+  .setDescriptionLocalizations(discordLocalizations("transfer.commandDescription"))
   .addStringOption((opt) =>
     opt
       .setName("equipe")
-      .setDescription("Nom de l'équipe")
+      .setDescription(tBot("en", "transfer.teamOptionDescription"))
+      .setDescriptionLocalizations(discordLocalizations("transfer.teamOptionDescription"))
       .setRequired(true)
       .setAutocomplete(true),
   )
   .addUserOption((opt) =>
     opt
       .setName("nouveau_capitaine")
-      .setDescription("Le nouveau capitaine")
+      .setDescription(tBot("en", "transfer.captainOptionDescription"))
+      .setDescriptionLocalizations(discordLocalizations("transfer.captainOptionDescription"))
       .setRequired(true),
   );
 
@@ -60,6 +64,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   const teamName = interaction.options.getString("equipe", true);
   const newCaptain = interaction.options.getUser("nouveau_capitaine", true);
+  const lang = await getGuildLanguage(interaction.guildId);
 
   // 1. Autorisation (Sécurité)
   const { data: settings } = await supabase
@@ -73,8 +78,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   if (!toRoleId || !member.roles.cache.has(toRoleId)) {
     return interaction.reply({
-      content:
-        "❌ Accès refusé : Vous n'avez pas le rôle Tournament Organizer configuré pour ce serveur.",
+      content: tBot(lang, "transfer.accessDenied"),
       ephemeral: true,
     });
   }
@@ -90,14 +94,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
     .single();
 
   if (teamErr || !team) {
-    return interaction.editReply(`❌ Équipe introuvable : ${teamName}`);
+    return interaction.editReply(tBot(lang, "transfer.teamNotFound", { teamName }));
   }
 
   const oldCaptainId = team.captain_discord_id;
   if (oldCaptainId === newCaptain.id) {
-    return interaction.editReply(
-      "❌ Cet utilisateur est déjà le capitaine de cette équipe.",
-    );
+    return interaction.editReply(tBot(lang, "transfer.alreadyCaptain"));
   }
 
   // 3. Base de données : Transfert logique
@@ -148,8 +150,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .catch(() => null);
     if (oldMember) await oldMember.setNickname(null); // Reset
   } catch (e: any) {
-    renameMessage +=
-      "\n⚠️ Impossible de réinitialiser le pseudo de l'ancien capitaine.";
+    renameMessage += `\n${tBot(lang, "transfer.resetNicknameFailed")}`;
   }
 
   try {
@@ -158,16 +159,15 @@ export async function execute(interaction: ChatInputCommandInteraction) {
       .catch(() => null);
     if (newMember) await newMember.setNickname(teamName);
   } catch (e: any) {
-    renameMessage +=
-      "\n⚠️ Impossible de renommer le nouveau capitaine automatiquement.";
+    renameMessage += `\n${tBot(lang, "transfer.renameFailed")}`;
   }
 
   // 5. Feedback
   const embed = new EmbedBuilder()
     .setColor("#00FF00")
-    .setTitle("🔄 Transfert de Capitaine")
+    .setTitle(tBot(lang, "transfer.successTitle"))
     .setDescription(
-      `Le rôle de capitaine pour l'équipe **${teamName}** a été mis à jour avec succès.\nAncien: <@${oldCaptainId}>\nNouveau: <@${newCaptain.id}>`,
+      tBot(lang, "transfer.successDescription", { teamName, oldCaptainId, newCaptainId: newCaptain.id }),
     );
 
   if (renameMessage) {

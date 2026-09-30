@@ -19,6 +19,7 @@ import {
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/context/ToastContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { useTranslation } from "@/i18n/LanguageContext";
 
 // Helper for bracket visually formatting the first round
 const BRACKET_PAIRS: Record<number, number[][]> = {
@@ -77,6 +78,7 @@ export function PlacementPhaseClient({
   initialPhaseTeams: any[];
 }) {
   const router = useRouter();
+  const { t, locale } = useTranslation();
 
   const isGroups = phase.format === "ROUND_ROBIN";
   const isSwiss = phase.format === "SWISS";
@@ -143,7 +145,7 @@ export function PlacementPhaseClient({
       (t) => !seeds.some((s) => s?.id === t.id),
     );
     if (unplacedTeams.length === 0) {
-      toast.info("Plus aucune équipe disponible à placer.");
+      toast.info(t("adminPlacement.noTeamsAvailable"));
       return;
     }
     const newSeeds = [...seeds];
@@ -153,7 +155,7 @@ export function PlacementPhaseClient({
       }
     }
     setSeeds(newSeeds);
-    toast.success("Remplissage automatique effectué !");
+    toast.success(t("adminPlacement.autoFillSuccess"));
   };
   const handleRemoveFromSlot = (index: number) => {
     const newSeeds = [...seeds];
@@ -163,7 +165,7 @@ export function PlacementPhaseClient({
   const handleResetSeeding = () => {
     setSeeds(new Array(totalSlots).fill(null));
     setShowResetModal(false);
-    toast.success("Seeding réinitialisé !");
+    toast.success(t("adminPlacement.resetSuccess"));
   };
 
   const handleConfirmSelection = () => {
@@ -204,11 +206,11 @@ export function PlacementPhaseClient({
 
       if (!res.ok) { let b={error: "Erreur de sauvegarde"}; try { b = await res.json(); } catch(e){} throw new Error(b.error || "Erreur de sauvegarde"); }
       setShowSaveModal(false);
-      toast.success("Placement enregistré avec succès !");
+      toast.success(t("adminPlacement.saveSuccess"));
       router.refresh();
     } catch (e: any) {
       console.error(e);
-      toast.error(e.message || "Erreur lors de l'enregistrement du placement");
+      toast.error(t("feedback.genericError", { message: e.message || String(e) }));
     } finally {
       setIsSaving(false);
     }
@@ -230,7 +232,7 @@ export function PlacementPhaseClient({
             <Plus className="w-4 h-4" strokeWidth={3} />
           </div>
           <span className="text-slate-500 text-xs font-medium uppercase tracking-wider">
-            Vide
+            {t("adminPlacement.emptySlot")}
           </span>
         </div>
       );
@@ -293,7 +295,7 @@ export function PlacementPhaseClient({
             className="bg-[#151722] rounded-lg border border-slate-800 shadow-sm overflow-hidden"
           >
             <div className="bg-slate-900 border-b border-slate-800 px-4 py-2 font-bold text-slate-200 text-sm">
-              Groupe {idx + 1}
+              {t("adminPlacement.groupHeader", { number: idx + 1 })}
             </div>
             <div className="p-2 flex flex-col gap-1.5 bg-[#0f111a]">
               {groupSeeds.map((seedNum) => (
@@ -327,10 +329,10 @@ export function PlacementPhaseClient({
         <div>
           <h3 className="text-sm font-bold text-slate-350 tracking-wide uppercase flex items-center gap-2 mb-2">
             <span className="w-2 h-4 bg-amber-500 rounded-sm inline-block"></span>
-            Aperçu Ronde 1 (Suisse)
+            {t("adminPlacement.swissPreviewTitle")}
           </h3>
           <p className="text-xs text-slate-500">
-            Les paires de la première ronde sont générées par ordre de seeding : 1 vs 2, 3 vs 4, etc. La dernière équipe reçoit un BYE en cas de nombre impair.
+            {t("adminPlacement.swissPreviewDesc")}
           </p>
         </div>
 
@@ -346,7 +348,7 @@ export function PlacementPhaseClient({
               >
                 {/* Match header */}
                 <div className="px-3 py-1.5 bg-slate-900 border-b border-slate-800/50 flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  <span>Match {idx + 1}</span>
+                  <span>{t("adminPlacement.matchNumber", { number: idx + 1 })}</span>
                 </div>
 
                 {/* Team 1 */}
@@ -357,7 +359,7 @@ export function PlacementPhaseClient({
                       className="flex-1 px-3 text-left hover:bg-slate-800/30 transition-colors flex items-center justify-between group h-full"
                     >
                       <span className="text-slate-500 font-semibold text-xs">
-                        Vide (Seed {seedA})
+                        {t("adminPlacement.emptySlot")} (Seed {seedA})
                       </span>
                       <Plus
                         className="w-3.5 h-3.5 text-green-500 opacity-0 group-hover:opacity-100"
@@ -394,7 +396,7 @@ export function PlacementPhaseClient({
                       className="flex-1 px-3 text-left hover:bg-slate-800/30 transition-colors flex items-center justify-between group h-full"
                     >
                       <span className="text-slate-500 font-semibold text-xs">
-                        Vide (Seed {seedB})
+                        {t("adminPlacement.emptySlot")} (Seed {seedB})
                       </span>
                       <Plus
                         className="w-3.5 h-3.5 text-green-500 opacity-0 group-hover:opacity-100"
@@ -434,7 +436,7 @@ export function PlacementPhaseClient({
                 className="bg-[#151722] rounded-lg border border-slate-800/80 shadow-md flex flex-col overflow-hidden text-sm text-slate-400 md:col-span-2 max-w-md"
               >
                 <div className="px-3 py-1.5 bg-slate-900 border-b border-slate-800/50 flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                  <span>Match Exempt (BYE)</span>
+                  <span>{t("adminPlacement.byeMatchTitle")}</span>
                 </div>
 
                 <div className="flex items-stretch border-b border-slate-800/50 h-11 relative">
@@ -444,7 +446,7 @@ export function PlacementPhaseClient({
                       className="flex-1 px-3 text-left hover:bg-slate-800/30 transition-colors flex items-center justify-between group h-full"
                     >
                       <span className="text-slate-500 font-semibold text-xs">
-                        Vide (Seed {byeSeed})
+                        {t("adminPlacement.emptySlot")} (Seed {byeSeed})
                       </span>
                       <Plus
                         className="w-3.5 h-3.5 text-green-500 opacity-0 group-hover:opacity-100"
@@ -474,7 +476,7 @@ export function PlacementPhaseClient({
                 </div>
 
                 <div className="flex items-center px-3 h-11 bg-slate-900/40 text-slate-500 italic font-semibold">
-                  BYE (Exempt d'office)
+                  {t("adminPlacement.byeExemptLabel")}
                 </div>
               </div>
             );
@@ -490,7 +492,7 @@ export function PlacementPhaseClient({
     if (!pairs) {
       return (
         <div className="text-slate-400 p-8 text-center bg-slate-900 rounded-xl border border-slate-800">
-          Aucun format d'arbre disponible pour cette taille ({totalSlots}).
+          {t("adminPlacement.noTreeFormat", { size: totalSlots })}
         </div>
       );
     }
@@ -626,7 +628,7 @@ export function PlacementPhaseClient({
                                       className={`flex-1 px-3 text-left ${(isTBD || isLoser || r > 1) ? 'cursor-default' : 'hover:bg-slate-800/30'} transition-colors flex items-center justify-between group h-full`}
                                     >
                                       <span className="text-slate-500 font-semibold text-xs">
-                                        {isTBD ? "TBD" : `Vide (Seed ${seedA})`}
+                                        {isTBD ? t("common.tbd") : `${t("adminPlacement.emptySlot")} (Seed ${seedA})`}
                                       </span>
                                       {!isTBD && !isLoser && r === 1 && (
                                         <Plus
@@ -667,7 +669,7 @@ export function PlacementPhaseClient({
                                       className={`flex-1 px-3 text-left ${(isTBD || isLoser || r > 1) ? 'cursor-default' : 'hover:bg-slate-800/30'} transition-colors flex items-center justify-between group h-full`}
                                     >
                                       <span className="text-slate-500 font-semibold text-xs">
-                                        {isTBD ? "TBD" : `Vide (Seed ${seedB})`}
+                                        {isTBD ? t("common.tbd") : `${t("adminPlacement.emptySlot")} (Seed ${seedB})`}
                                       </span>
                                       {!isTBD && !isLoser && r === 1 && (
                                         <Plus
@@ -717,13 +719,13 @@ export function PlacementPhaseClient({
     if (isDoubleElim) {
       return (
         <div className="flex flex-col gap-8">
-          {renderBracketTree("Winner Bracket (Tableau Principal)")}
-          {renderBracketTree("Loser Bracket (Tableau de Repêchage)", true)}
+          {renderBracketTree(t("adminPlacement.winnerBracket"))}
+          {renderBracketTree(t("adminPlacement.loserBracket"), true)}
         </div>
       );
     }
 
-    return renderBracketTree("Élimination Directe");
+    return renderBracketTree(t("adminPlacement.singleElimination"));
   };
 
   return (
@@ -734,7 +736,7 @@ export function PlacementPhaseClient({
           <div className="px-5 py-4 border-b border-slate-800 bg-slate-800/50 flex justify-between items-center shrink-0">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <Users className="w-5 h-5 text-blue-400" />
-              Participants
+              {t("adminPlacement.rosterTitle")}
             </h2>
             <span className="bg-blue-500/20 text-blue-400 text-xs font-bold px-2 py-1 rounded">
               {seeds.filter((s) => s !== null).length} / {activeSlotsCount}
@@ -797,7 +799,7 @@ export function PlacementPhaseClient({
                     <>
                       <div className="flex-1 flex items-center justify-between opacity-50 group">
                         <span className="text-slate-400 font-medium text-sm">
-                          Vide...
+                          {t("adminPlacement.emptySlot")}...
                         </span>
                         <div className="w-6 h-6 rounded-full bg-slate-800 text-green-500 flex items-center justify-center border border-slate-700 group-hover:bg-green-500/20 group-hover:text-green-400 transition-colors">
                           <Plus className="w-3.5 h-3.5" strokeWidth={3} />
@@ -816,7 +818,7 @@ export function PlacementPhaseClient({
               className="w-full h-10 bg-gradient-to-r from-amber-600 to-yellow-500 hover:from-amber-500 hover:to-yellow-400 text-white rounded-lg font-bold shadow-lg shadow-yellow-500/10 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <Wand2 className="w-4 h-4" />
-              Remplissage Automatique
+              {t("adminPlacement.autoFill")}
             </button>
             <button
               onClick={() => setShowResetModal(true)}
@@ -824,7 +826,7 @@ export function PlacementPhaseClient({
               className="w-full h-10 bg-slate-800/80 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 rounded-lg font-semibold border border-slate-700 hover:border-rose-900/50 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:hover:bg-slate-800/80 disabled:hover:text-slate-400 disabled:hover:border-slate-700 cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
-              Réinitialiser le seeding
+              {t("adminPlacement.resetSeeding")}
             </button>
             <button
               onClick={() => setShowSaveModal(true)}
@@ -836,7 +838,7 @@ export function PlacementPhaseClient({
               ) : (
                 <>
                   <Save className="w-5 h-5" />
-                  Enregistrer le seeding
+                  {t("adminPlacement.saveSeeding")}
                 </>
               )}
             </button>
@@ -848,9 +850,9 @@ export function PlacementPhaseClient({
           <div className="px-6 py-4 border-b border-slate-800 bg-slate-800/50 shrink-0 flex justify-between items-center">
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <Maximize2 className="w-5 h-5 text-slate-400" />
-              Aperçu{" "}
+              {t("adminPlacement.previewTitle")}{" "}
               <span className="opacity-50 font-normal">
-                ({isGroups ? "Groupes" : (isSwiss ? "Ronde suisse" : (phase.format === "DOUBLE_ELIM" ? "Double élimination" : "Élimination directe"))})
+                ({isGroups ? t("adminStructure.roundRobin") : (isSwiss ? t("adminStructure.swiss") : (phase.format === "DOUBLE_ELIM" ? t("adminStructure.doubleElim") : t("adminStructure.singleElim")))})
               </span>
             </h2>
           </div>
@@ -868,7 +870,7 @@ export function PlacementPhaseClient({
             <div className="border-b border-slate-800 px-6 py-5 bg-slate-900 shrink-0">
               <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
                 <Users className="w-5 h-5 text-indigo-400" />
-                Sélectionnez un participant pour le seed {targetSlot}
+                {t("adminPlacement.selectParticipantModal", { seed: targetSlot ?? 0 })}
               </h2>
             </div>
 
@@ -881,13 +883,13 @@ export function PlacementPhaseClient({
                 <input
                   type="text"
                   className="block w-full pl-10 pr-3 py-2 border border-slate-800 rounded-lg leading-5 bg-slate-950 placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm text-slate-200 transition-colors"
-                  placeholder="Rechercher un participant..."
+                  placeholder={t("adminPlacement.searchParticipantPlaceholder")}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
               <div className="text-sm font-semibold border border-slate-800 bg-slate-950 px-4 py-2 rounded-lg text-slate-400 flex items-center gap-2 shrink-0">
-                Participants sortants
+                {t("adminPlacement.unassignedParticipants")}
               </div>
             </div>
 
@@ -904,7 +906,7 @@ export function PlacementPhaseClient({
                   htmlFor="dispo"
                   className="text-sm font-semibold text-slate-300"
                 >
-                  Disponible ({unassignedTeams.length})
+                  {t("adminPlacement.availableCount", { count: unassignedTeams.length })}
                 </label>
               </div>
             </div>
@@ -922,13 +924,13 @@ export function PlacementPhaseClient({
                       scope="col"
                       className="px-6 py-3 text-left text-xs font-bold text-slate-400 uppercase tracking-wider"
                     >
-                      Nom
+                      {t("adminParticipants.teamName")}
                     </th>
                     <th
                       scope="col"
                       className="px-6 py-3 text-right text-xs font-bold text-slate-400 uppercase tracking-wider"
                     >
-                      Date de création
+                      {t("adminPlacement.creationDate")}
                     </th>
                     <th
                       scope="col"
@@ -945,7 +947,7 @@ export function PlacementPhaseClient({
                         colSpan={4}
                         className="px-6 py-8 text-center text-slate-500"
                       >
-                        Aucun participant trouvé.
+                        {t("adminPlacement.noParticipantFound")}
                       </td>
                     </tr>
                   ) : (
@@ -967,7 +969,7 @@ export function PlacementPhaseClient({
                           {team.name}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-400 text-right">
-                          {new Date(team.created_at).toLocaleString("fr-FR", {
+                          {new Date(team.created_at).toLocaleString(locale === "en" ? "en-US" : "fr-FR", {
                             dateStyle: "short",
                             timeStyle: "medium",
                           })}
@@ -988,14 +990,14 @@ export function PlacementPhaseClient({
                 onClick={() => setModalOpen(false)}
                 className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold shadow-md transition-colors flex items-center gap-2 border border-slate-700 cursor-pointer"
               >
-                Annuler
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleConfirmSelection}
                 disabled={!selectedTeamId}
                 className="px-8 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg font-bold shadow-lg transition-all cursor-pointer"
               >
-                Valider
+                {t("common.save")}
               </button>
             </div>
           </div>
@@ -1007,9 +1009,9 @@ export function PlacementPhaseClient({
         isOpen={showResetModal}
         onClose={() => setShowResetModal(false)}
         onConfirm={handleResetSeeding}
-        title="Réinitialiser le seeding"
-        description="Êtes-vous sûr de vouloir réinitialiser tout le placement des équipes pour cette phase ?"
-        confirmText="Réinitialiser"
+        title={t("adminPlacement.resetSeeding")}
+        description={t("adminPlacement.resetConfirm")}
+        confirmText={t("adminPlacement.resetButton")}
         variant="danger"
         icon={RotateCcw}
       />
@@ -1019,9 +1021,9 @@ export function PlacementPhaseClient({
         isOpen={showSaveModal}
         onClose={() => setShowSaveModal(false)}
         onConfirm={handleSaveSeeding}
-        title="Enregistrer le placement"
-        description="Sauvegarder ce placement pour cette phase ? Les matchs associés seront régénérés selon cette nouvelle configuration."
-        confirmText="Sauvegarder et générer"
+        title={t("adminPlacement.saveSeeding")}
+        description={t("adminPlacement.saveConfirm")}
+        confirmText={t("adminPlacement.saveAndGenerate")}
         variant="primary"
         icon={Save}
         isLoading={isSaving}

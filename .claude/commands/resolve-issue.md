@@ -2,7 +2,7 @@
 
 Exécute le rituel structuré de résolution pour l'issue spécifiée : `$ARGUMENTS`.
 
-## Instructions pour Claude :
+## Instructions pour Claude / Antigravity :
 
 1. **Vérification de l'argument** :
    * L'argument `$ARGUMENTS` doit être un numéro d'issue GitHub (ex: `20` ou `#20`).
@@ -13,6 +13,7 @@ Exécute le rituel structuré de résolution pour l'issue spécifiée : `$ARGUME
    * Exécute `gh issue view $ARGUMENTS --json number,title,body,labels` pour lire le ticket.
    * Recherche les fichiers et types concernés avec `rg` ou `fd`.
    * Vérifie la vérité de la DB dans `supabase/migrations/` et les types dans `packages/shared/src/index.ts`.
+   * Consulte `docs/EDGE_CASES.md` pour relever les cas limites et invariants existants du domaine touché.
 
 3. **Phase 2 : 🛑 RÉCAPITULATIF & PLAN D'IMPLÉMENTATION (Point d'arrêt obligatoire)** :
    * Présente à l'utilisateur :
@@ -20,24 +21,27 @@ Exécute le rituel structuré de résolution pour l'issue spécifiée : `$ARGUME
      - 🎯 Résumé de l'objectif.
      - 📂 Fichiers exacts à modifier ou créer.
      - 🗄️ Impact base de données (migration nécessaire ?).
-     - ⚠️ Cas limites et pièges identifiés.
-     - 🧪 Stratégie de tests prévue.
+     - ⚠️ Cas limites et pièges identifiés (IDs `docs/EDGE_CASES.md` impactés, nouveaux cas, cas obsolètes).
+     - 🔒 Impact sécurité (routes, RLS, validation d'entrée, secrets) ou « aucun impact » explicite.
+     - 🧪 Stratégie de tests TDD prévue (un test par cas limite annoncé, tests de refus pour la sécurité).
    * **STOP** : Demande explicitement validation à l'utilisateur avant d'écrire la moindre ligne de code. Ne commence à coder qu'après son accord.
 
-4. **Phase 3 : Implémentation selon l'ordre strict** :
+4. **Phase 3 : Implémentation & TDD Strict** :
    * Ordre : `DB ➜ @hub/shared (rebuild obligatoire !) ➜ Services Bot ➜ Routes API ➜ Web UI ➜ Tests`.
-   * Respecte le typage strict du bot (`noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`).
-   * Respecte Next.js 16 / React 19 (`await params`, `"use client";`, `<Link>`, pas de `setState` synchrone dans `useEffect`).
+   * **TDD strict avec Verify RED** : écrire le test Vitest d'abord, exécuter et **constater l'échec pour la raison attendue**, puis implémenter le code pour passer au vert.
+   * **Loi d'Airain Anti-Band-Aids** : interdiction formelle de poser des rustines (`?.` sauvages, `as any`, `as unknown as`, `try/catch` vides) pour faire taire les erreurs. Trouver la cause racine.
+   * **Checklist Sécurité** : `verify*Guild` avant toute mutation, re-validation de l'état DB à chaque interaction Discord (idempotence), RLS sur toute nouvelle table, aucun secret en `NEXT_PUBLIC_*`.
+   * **Registre** : synchroniser `docs/EDGE_CASES.md` (ajout, promotion ✅, purge).
+   * **Règles Front React 19** : 3 états obligatoires (Skeleton, Error toast, Empty state) et nettoyage strict des abonnements/listeners dans `useEffect`.
 
-5. **Phase 4 : Validation Tests & Build (sans watch)** :
-   * `make test` : vérifie que 100% des tests unitaires passent.
-   * `make lint` : valide 0 erreur TypeScript et ESLint.
-   * `make build` : valide la chaîne de compilation complète.
+5. **Phase 4 : Porte de Vérification (Evidence Before Claims)** :
+   * Interdiction formelle d'affirmer que c'est résolu sans **preuve terminale fraîche** :
+     - `make test` : 100% de succès.
+     - `make lint` : 0 erreur de typage / linting.
+     - `make build` : compilation globale réussie.
+   * Chaque cas limite annoncé est prouvé par un test qui passe ; si le diff touche routes, middlewares, migrations ou env, dérouler l'auto-contrôle du skill `security-auditor`.
 
-6. **Phase 5 : Bilan Final & Livraison (PAS D'AUTO-COMMIT)** :
-   * Vérifie la propreté du `git diff` (aucun `console.log` de debug résiduel).
+6. **Phase 5 : Clôture & Mini-Rapport (PAS D'AUTO-COMMIT)** :
+   * Vérifie la propreté du `git diff` (aucun `console.log` de debug résiduel, aucun `any`, `docs/EDGE_CASES.md` synchronisé).
    * **N'exécute JAMAIS de `git commit` automatiquement.**
-   * Affiche le bilan des modifications et les résultats de tests.
-   * Donne les instructions précises pour tester manuellement en local (`make dev`, URLs à visiter).
-   * Fournit la commande de commit prête à l'emploi pour l'utilisateur :
-     `git commit -m "<type>(<scope>): <message> (#$ARGUMENTS)"`
+   * Affiche le mini-rapport en 5 lignes max (fichiers modifiés, preuves terminales, cas limites testés, URL locale de test, commande de commit prête à copier).

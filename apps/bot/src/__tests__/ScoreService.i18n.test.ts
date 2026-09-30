@@ -1,0 +1,62 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+vi.mock("../lib/supabase", () => ({
+  supabase: { from: vi.fn() },
+}));
+vi.mock("../utils/logger", () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
+import { supabase } from "../lib/supabase";
+import { ScoreService } from "../services/ScoreService";
+
+function mockTables(rows: Record<string, unknown>) {
+  vi.mocked(supabase.from).mockImplementation(((table: string) => {
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      single: () =>
+        Promise.resolve(
+          table in rows
+            ? { data: rows[table], error: null }
+            : { data: null, error: { code: "PGRST116", message: "no rows" } },
+        ),
+    };
+    return builder;
+  }) as unknown as typeof supabase.from);
+}
+
+function selectMenuInteraction() {
+  return {
+    customId: "select_match_to_score",
+    values: ["match-1"],
+    user: { id: "captain-1" },
+    guildId: "guild-1",
+    deferReply: vi.fn(),
+    editReply: vi.fn(),
+  };
+}
+
+describe("ScoreService - I18N-03 localized replies", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("answers in English when the server language is en", async () => {
+    mockTables({ server_settings: { language: "en" } });
+    const interaction = selectMenuInteraction();
+
+    await ScoreService.handleSelectMenu(interaction as never);
+
+    expect(interaction.editReply).toHaveBeenCalledWith({ content: "❌ Match not found." });
+  });
+
+  it("answers in French when the server language is fr", async () => {
+    mockTables({ server_settings: { language: "fr" } });
+    const interaction = selectMenuInteraction();
+
+    await ScoreService.handleSelectMenu(interaction as never);
+
+    expect(interaction.editReply).toHaveBeenCalledWith({ content: "❌ Match introuvable." });
+  });
+});

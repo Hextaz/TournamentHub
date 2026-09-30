@@ -7,10 +7,12 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, XCircle, UserPlus, Trash2, Search, Pencil, Sparkles } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { PromptModal } from "@/components/ui/PromptModal";
+import { useTranslation } from "@/i18n/LanguageContext";
 
 export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { tournamentId: string; guildId: string; initialTeams: any[] }) {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [teams, setTeams] = useState(initialTeams);
   const [isAdding, setIsAdding] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
@@ -109,18 +111,18 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       setSearchTerm("");
       setSelectedMember(null);
       setIsAdding(false);
-      toast.success("Équipe ajoutée avec succès !");
+      toast.success(t("feedback.teamAdded"));
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Erreur lors de l'ajout de l'équipe");
+      toast.error(t("feedback.addTeamFailed", { message: err.message || String(err) }));
     }
   };
 
   const handleGenerateFakeTeamsSubmit = async (inputStr: string) => {
     const count = parseInt(inputStr, 10);
     if (isNaN(count) || count < 1 || count > 128) {
-      toast.warning("Veuillez renseigner un nombre d'équipes valide (entre 1 et 128).");
+      toast.warning(t("feedback.fakeTeamsInvalidCount", { min: 1, max: 128 }));
       return;
     }
 
@@ -140,11 +142,11 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       const newTeams = await res.json();
       setTeams(prev => [...prev, ...newTeams]);
       setShowFakeModal(false);
-      toast.success(`${count} équipes fictives générées avec succès !`);
+      toast.success(t("feedback.fakeTeamsAdded", { count }));
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Erreur lors de la génération d'équipes fictives");
+      toast.error(t("feedback.fakeTeamsFailed", { message: err.message || String(err) }));
     } finally {
       setIsGeneratingFake(false);
     }
@@ -164,11 +166,11 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       }
 
       setTeams(teams.map(t => t.id === teamId ? { ...t, is_checked_in: !currentStatus } : t));
-      toast.success(!currentStatus ? "Équipe check-in validé !" : "Check-in de l'équipe annulé !");
+      toast.success(!currentStatus ? t("feedback.teamCheckedIn") : t("feedback.teamCheckinCancelled"));
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Erreur lors de la mise à jour");
+      toast.error(t("feedback.updateFailed", { message: err.message || String(err) }));
     }
   };
 
@@ -207,11 +209,11 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       setEditTeamName("");
       setSelectedMember(null);
       setSearchTerm("");
-      toast.success("Équipe mise à jour avec succès !");
+      toast.success(t("feedback.teamUpdated"));
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Erreur lors de la modification de l'équipe");
+      toast.error(t("feedback.editTeamFailed", { message: err.message || String(err) }));
     }
   };
 
@@ -229,11 +231,11 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
 
       setTeams(teams.filter(t => t.id !== teamToDelete.id));
       setTeamToDelete(null);
-      toast.success("Équipe supprimée avec succès !");
+      toast.success(t("feedback.teamDeleted"));
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Erreur lors de la suppression de l'équipe");
+      toast.error(t("feedback.deleteTeamFailed", { message: err.message || String(err) }));
     }
   };
 
@@ -294,9 +296,9 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
     <div className="space-y-6">
       <div className="flex justify-between items-center bg-slate-800/50 p-4 rounded-xl border border-slate-700/50">
         <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          Liste des Équipes
+          {t("adminParticipants.title")}
           <span className="text-sm font-normal px-2.5 py-0.5 rounded-full bg-slate-700 text-slate-300">
-            {teams.length} inscrits
+            {t("adminParticipants.registeredCount", { count: teams.length })}
           </span>
         </h2>
         <div className="flex gap-2">
@@ -305,7 +307,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-lg shadow-blue-500/20"
           >
             <UserPlus className="w-4 h-4" />
-            Ajouter manuellement
+            {t("adminParticipants.addManual")}
           </button>
 
           <button
@@ -313,7 +315,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
             className="flex items-center gap-2 bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-lg font-bold transition-colors shadow-lg shadow-yellow-500/20 cursor-pointer"
           >
             <Sparkles className="w-4 h-4" />
-            Générer Fake
+            {t("adminParticipants.generateFake")}
           </button>
         </div>
       </div>
@@ -322,16 +324,16 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl border border-slate-700 custom-scrollbar">
             <div className="bg-slate-900 border-b border-slate-700 p-4">
-              <h3 className="text-xl font-bold text-white">Ajouter une équipe</h3>
+              <h3 className="text-xl font-bold text-white">{t("adminParticipants.addTeamModal")}</h3>
             </div>
 
             <form onSubmit={handleAddTeam} className="p-6 space-y-6">
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-400">Nom de l'équipe</label>
+                  <label className="text-sm font-semibold text-slate-400">{t("adminParticipants.teamName")}</label>
                   <input
                     type="text"
-                    placeholder="Nom de l'équipe..."
+                    placeholder={t("adminParticipants.teamNamePlaceholder")}
                     className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
                     value={newTeamName}
                     onChange={(e) => setNewTeamName(e.target.value)}
@@ -340,13 +342,13 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-400">Capitaine Discord</label>
+                  <label className="text-sm font-semibold text-slate-400">{t("adminParticipants.captainDiscord")}</label>
                   <div className="relative" ref={dropdownRef}>
                     <div className="relative">
                       <Search className="w-5 h-5 absolute left-3 top-3.5 text-slate-400" />
                       <input
                         type="text"
-                        placeholder="Rechercher capitaine Discord..."
+                        placeholder={t("adminParticipants.searchCaptainPlaceholder")}
                         className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-blue-500"
                         value={selectedMember ? selectedMember.displayName : searchTerm}
                         onChange={(e) => {
@@ -362,9 +364,9 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
                     {isDropdownOpen && !selectedMember && (
                       <div className="absolute top-14 left-0 w-full bg-slate-800 border border-slate-700 rounded-lg mt-1 max-h-60 overflow-y-auto z-50 shadow-xl overscroll-auto custom-scrollbar">
                         {members.length === 0 ? (
-                          <div className="p-3 text-sm text-slate-400 text-center">Chargement des membres...</div>
+                          <div className="p-3 text-sm text-slate-400 text-center">{t("adminParticipants.loadingMembers")}</div>
                         ) : filteredMembers.length === 0 ? (
-                          <div className="p-3 text-sm text-slate-400 text-center">Aucun membre trouvé</div>
+                          <div className="p-3 text-sm text-slate-400 text-center">{t("adminParticipants.noMembersFound")}</div>
                         ) : (
                           filteredMembers.map(member => (
                             <div
@@ -388,7 +390,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
                 </div>
 
                 <div className="pt-4 space-y-4">
-                  <h4 className="text-sm font-semibold text-slate-300 border-b border-slate-700 pb-2">Membres de l'équipe</h4>
+                  <h4 className="text-sm font-semibold text-slate-300 border-b border-slate-700 pb-2">{t("adminParticipants.teamMembers")}</h4>
                   {teamMembers.map((member, idx) => (
                     <div key={idx} className="flex flex-col sm:flex-row gap-3">
                       <div className="flex-1">
@@ -430,14 +432,14 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
                   onClick={() => setIsAdding(false)}
                   className="px-5 py-2.5 rounded-lg font-bold text-slate-300 hover:bg-slate-700 transition-colors"
                 >
-                  Annuler
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={!selectedMember || !newTeamName}
                   className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  Valider
+                  {t("common.save")}
                 </button>
               </div>
             </form>
@@ -449,10 +451,10 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
         <table className="w-full text-left">
           <thead className="bg-slate-900/80 text-slate-400 text-sm border-b border-slate-700">
             <tr>
-              <th className="px-6 py-4 font-medium uppercase tracking-wider">Nom de l'équipe</th>
-              <th className="px-6 py-4 font-medium uppercase tracking-wider">Membres</th>
-              <th className="px-6 py-4 font-medium uppercase tracking-wider">Statut Check-in</th>
-              <th className="px-6 py-4 font-medium uppercase tracking-wider text-right">Actions TO</th>
+              <th className="px-6 py-4 font-medium uppercase tracking-wider">{t("adminParticipants.teamName")}</th>
+              <th className="px-6 py-4 font-medium uppercase tracking-wider">{t("adminParticipants.teamMembers")}</th>
+              <th className="px-6 py-4 font-medium uppercase tracking-wider">{t("adminParticipants.checkinStatus")}</th>
+              <th className="px-6 py-4 font-medium uppercase tracking-wider text-right">{t("adminParticipants.actions")}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-700/50">
@@ -461,7 +463,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
                 <td colSpan={4} className="px-6 py-12 text-center text-slate-500">
                   <div className="flex flex-col items-center gap-2">
                     <UserPlus className="w-8 h-8 opacity-50 mb-2" />
-                    <span>Aucune équipe n'est encore inscrite pour le moment.</span>
+                    <span>{t("adminParticipants.noTeamsYet")}</span>
                   </div>
                 </td>
               </tr>
@@ -480,25 +482,25 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
                   <td className="px-6 py-4 text-slate-300">
                     {team.team_members && team.team_members.length > 0 ? (
                       <div className="flex flex-col gap-1">
-                        <span className="text-sm border border-slate-600 bg-slate-800 px-2 py-1 rounded text-slate-300 w-max">{team.team_members.length} joueur(s)</span>
+                        <span className="text-sm border border-slate-600 bg-slate-800 px-2 py-1 rounded text-slate-300 w-max">{t("adminParticipants.playerCount", { count: team.team_members.length })}</span>
                         <div className="text-xs text-slate-400 max-w-[200px] truncate" title={team.team_members.map((m: any) => m.ingame_name || `(Joueur)`).join(', ')}>
                           {team.team_members.map((m: any) => m.ingame_name || `(Joueur)`).join(', ')}
                         </div>
                       </div>
                     ) : (
-                      <span className="text-sm bg-purple-500/10 text-purple-400 px-2 py-1 rounded border border-purple-500/20">Externe / Admin</span>
+                      <span className="text-sm bg-purple-500/10 text-purple-400 px-2 py-1 rounded border border-purple-500/20">{t("adminParticipants.externalAdmin")}</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
                     {team.is_checked_in ? (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-green-500/20 text-green-400 border border-green-500/20">
                         <CheckCircle2 className="w-3.5 h-3.5" />
-                        Validé
+                        {t("adminParticipants.checkedIn")}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-slate-700/50 text-slate-400 border border-slate-700">
                         <XCircle className="w-3.5 h-3.5" />
-                        En attente
+                        {t("adminParticipants.pending")}
                       </span>
                     )}
                   </td>
@@ -512,13 +514,13 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
                             : "bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20"
                         }`}
                       >
-                        {team.is_checked_in ? "Annuler le check-in" : "👉 Forcer le check-in"}
+                        {team.is_checked_in ? t("adminParticipants.cancelCheckin") : t("adminParticipants.forceCheckin")}
                       </button>
                       <div className="flex bg-slate-700/50 rounded-lg overflow-hidden border border-slate-600">
                         <button
                           onClick={() => openEditModal(team)}
                           className="p-2 hover:bg-blue-500/20 text-slate-300 hover:text-blue-400 transition-colors"
-                          title="Éditer l'équipe"
+                          title={t("adminParticipants.editTeamTitle")}
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -526,7 +528,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
                         <button
                           onClick={() => setTeamToDelete(team)}
                           className="p-2 hover:bg-red-500/20 text-slate-300 hover:text-red-400 transition-colors"
-                          title="Supprimer l'équipe"
+                          title={t("adminParticipants.deleteTeamTitle")}
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -543,15 +545,15 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-slate-800 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl border border-slate-700">
             <div className="bg-slate-900 border-b border-slate-700 p-4">
-              <h3 className="text-xl font-bold text-white">Éditer l'équipe</h3>
+              <h3 className="text-xl font-bold text-white">{t("adminParticipants.editTeamModal")}</h3>
             </div>
 
             <form onSubmit={handleEditTeam} className="p-6 space-y-6">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-400">Nom de l'équipe</label>
+                <label className="text-sm font-semibold text-slate-400">{t("adminParticipants.teamName")}</label>
                 <input
                   type="text"
-                  placeholder="Nom de l'équipe..."
+                  placeholder={t("adminParticipants.teamNamePlaceholder")}
                   className="w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-blue-500"
                   value={editTeamName}
                   onChange={(e) => setEditTeamName(e.target.value)}
@@ -560,13 +562,13 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-400">Capitaine Discord</label>
+                <label className="text-sm font-semibold text-slate-400">{t("adminParticipants.captainDiscord")}</label>
                 <div className="relative" ref={dropdownRef}>
                   <div className="relative">
                     <Search className="w-5 h-5 absolute left-3 top-3.5 text-slate-400" />
                     <input
                       type="text"
-                      placeholder="Rechercher capitane Discord..."
+                      placeholder={t("adminParticipants.searchCaptainPlaceholder")}
                       className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-3 text-white focus:outline-none focus:border-blue-500"
                       value={selectedMember ? selectedMember.displayName : searchTerm}
                       onChange={(e) => {
@@ -582,9 +584,9 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
                   {isDropdownOpen && !selectedMember && (
                     <div className="absolute top-14 left-0 w-full bg-slate-800 border border-slate-700 rounded-lg mt-1 max-h-60 overflow-y-auto z-50 shadow-xl overscroll-auto custom-scrollbar">
                       {members.length === 0 ? (
-                        <div className="p-3 text-sm text-slate-400 text-center">Chargement des membres...</div>
+                        <div className="p-3 text-sm text-slate-400 text-center">{t("adminParticipants.loadingMembers")}</div>
                       ) : filteredMembers.length === 0 ? (
-                        <div className="p-3 text-sm text-slate-400 text-center">Aucun membre trouvé</div>
+                        <div className="p-3 text-sm text-slate-400 text-center">{t("adminParticipants.noMembersFound")}</div>
                       ) : (
                         filteredMembers.map(member => (
                           <div
@@ -608,7 +610,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
               </div>
 
               <div className="pt-4 space-y-4">
-                <h4 className="text-sm font-semibold text-slate-300 border-b border-slate-700 pb-2">Membres de l'équipe</h4>
+                <h4 className="text-sm font-semibold text-slate-300 border-b border-slate-700 pb-2">{t("adminParticipants.teamMembers")}</h4>
                 {teamMembers.map((member, idx) => (
                   <div key={idx} className="flex flex-col sm:flex-row gap-3">
                     <div className="flex-1">
@@ -653,14 +655,14 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
                   }}
                   className="px-5 py-2.5 rounded-lg font-bold text-slate-300 hover:bg-slate-700 transition-colors"
                 >
-                  Annuler
+                  {t("common.cancel")}
                 </button>
                 <button
                   type="submit"
                   disabled={!selectedMember || !editTeamName}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
-                  Enregistrer
+                  {t("common.save")}
                 </button>
               </div>
             </form>
@@ -675,11 +677,11 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
               <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
                 <Trash2 className="w-8 h-8 text-red-500" />
               </div>
-              <h3 className="text-xl font-bold text-white">Supprimer l'équipe ?</h3>
+              <h3 className="text-xl font-bold text-white">{t("adminParticipants.deleteTeamModal")}</h3>
               <p className="text-sm text-slate-300">
-                Êtes-vous sûr de vouloir supprimer l'équipe <strong className="text-white">"{teamToDelete.name}"</strong> ?
+                {t("adminParticipants.deleteConfirmText", { name: teamToDelete.name })}
                 <br/>
-                <span className="text-red-400 block mt-2 text-xs uppercase tracking-wider font-bold">Cette action est irréversible.</span>
+                <span className="text-red-400 block mt-2 text-xs uppercase tracking-wider font-bold">{t("adminParticipants.irreversible")}</span>
               </p>
             </div>
 
@@ -688,14 +690,14 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
                 onClick={() => setTeamToDelete(null)}
                 className="flex-1 px-4 py-3 rounded-xl font-bold text-slate-300 hover:bg-slate-700 transition-colors"
               >
-                Annuler
+                {t("common.cancel")}
               </button>
               <button
                 onClick={handleDeleteTeam}
                 className="flex-1 px-4 py-3 rounded-xl font-bold bg-red-600 hover:bg-red-700 text-white transition-colors flex items-center justify-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
-                Supprimer
+                {t("common.delete")}
               </button>
             </div>
           </div>
@@ -707,14 +709,14 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
         isOpen={showFakeModal}
         onClose={() => setShowFakeModal(false)}
         onSubmit={handleGenerateFakeTeamsSubmit}
-        title="Générer des Équipes Fictives"
-        description="Indiquez le nombre d'équipes de test à générer automatiquement pour ce tournoi."
+        title={t("adminParticipants.fakeTeamsTitle")}
+        description={t("feedback.fakeTeamsPrompt")}
         defaultValue="8"
         inputType="number"
         min={1}
         max={128}
-        placeholder="Nombre d'équipes (ex: 8, 16, 32...)"
-        confirmText="Générer les équipes"
+        placeholder={t("adminParticipants.fakeTeamsPlaceholder")}
+        confirmText={t("adminParticipants.fakeTeamsConfirm")}
         isLoading={isGeneratingFake}
       />
     </div>

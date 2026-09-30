@@ -8,16 +8,17 @@ import {
   PermissionFlagsBits,
 } from "discord.js";
 import { supabase } from "../lib/supabase";
+import { tBot, getGuildLanguage, discordLocalizations } from "../i18n";
 
 export const data = new SlashCommandBuilder()
   .setName("admin-setup-checkin")
-  .setDescription(
-    "Déploie le panel de Check-in dans le salon actuel (réservé aux TOs).",
-  )
+  .setDescription(tBot("en", "checkin.commandDescription"))
+  .setDescriptionLocalizations(discordLocalizations("checkin.commandDescription"))
   .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
 
 export async function execute(interaction: ChatInputCommandInteraction) {
   if (!interaction.isChatInputCommand()) return;
+  const lang = await getGuildLanguage(interaction.guildId);
 
   // 1. Fetch current server settings to verify TO rights
   const { data: settings } = await supabase
@@ -42,8 +43,7 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
   if (!isSetupAdmin && !hasToRole) {
     return interaction.reply({
-      content:
-        "❌ Vous n'avez pas la permission d'utiliser cette commande. Vous devez être Administrateur ou avoir le rôle TO configuré dans le back-office.",
+      content: tBot(lang, "checkin.noPermission"),
       ephemeral: true,
     });
   }
@@ -51,14 +51,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
   // 3. Build UI
   const checkinEmbed = new EmbedBuilder()
     .setColor("#2ECC71")
-    .setTitle("📣 Check-in Ouvert !")
-    .setDescription(
-      "Capitaines ! Cliquez sur le bouton ci-dessous pour confirmer la présence de votre équipe pour le tournoi du jour.\n\n⚠️ *Le Check-in est obligatoire pour générer les brackets.*",
-    );
+    .setTitle(tBot(lang, "checkin.panelTitle"))
+    .setDescription(tBot(lang, "checkin.panelDescription"));
 
   const checkinButton = new ButtonBuilder()
     .setCustomId("btn_checkin")
-    .setLabel("Confirmer ma présence")
+    .setLabel(tBot(lang, "checkin.confirmButton"))
     .setStyle(ButtonStyle.Success)
     .setEmoji("✅");
 
@@ -91,12 +89,12 @@ export async function execute(interaction: ChatInputCommandInteraction) {
 
     // 5. Reply to the TO
     await interaction.reply({
-      content: "✅ Le panel de Check-in a bien été déployé dans ce salon.",
+      content: tBot(lang, "checkin.panelDeployed"),
       ephemeral: true,
     });
   } else {
     await interaction.reply({
-      content: "❌ Impossible de déployer le panel ici.",
+      content: tBot(lang, "checkin.cannotDeploy"),
       ephemeral: true,
     });
   }

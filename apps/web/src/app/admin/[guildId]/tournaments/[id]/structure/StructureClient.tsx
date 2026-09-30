@@ -7,6 +7,7 @@ import { CopyX, GitMerge, LayoutGrid, Network, Trash2, LayoutList, MoreVertical,
 import Link from "next/link";
 import { useToast } from "@/context/ToastContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { useTranslation } from "@/i18n/LanguageContext";
 
 export function StructureClient({
   tournamentId,
@@ -19,6 +20,7 @@ export function StructureClient({
 }) {
   const router = useRouter();
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [phaseToDelete, setPhaseToDelete] = useState<any>(null);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export function StructureClient({
         body: JSON.stringify({
           tournament_id: tournamentId,
           guildId: guildId,
-          name: format === "ROUND_ROBIN" ? "Groupes" : (format === "DOUBLE_ELIM" ? "Playoffs (Double)" : (format === "SWISS" ? "Rondes Suisses" : "Playoffs")),
+          name: format === "ROUND_ROBIN" ? t("adminStructure.roundRobin") : (format === "DOUBLE_ELIM" ? t("adminStructure.doubleElim") : (format === "SWISS" ? t("adminStructure.swiss") : t("adminStructure.singleElim"))),
           format: format,
           phase_order: order,
           bracket_size: 8,
@@ -49,11 +51,11 @@ export function StructureClient({
 
       if (!res.ok) throw new Error("Creation error");
       const newPhase = await res.json();
-      toast.success("Phase créée avec succès !");
+      toast.success(t("adminStructure.createdSuccess"));
       router.push(`/admin/${guildId}/tournaments/${tournamentId}/structure/${newPhase.id}`);
     } catch(e: any) {
       console.error(e);
-      toast.error(e.message || "Erreur lors de la création de la phase.");
+      toast.error(t("feedback.createPhaseFailed"));
     }
   };
 
@@ -73,22 +75,22 @@ export function StructureClient({
 
       setDropdownOpen(null);
       setPhaseToDelete(null);
-      toast.success("Phase supprimée avec succès !");
+      toast.success(t("adminStructure.deletedSuccess"));
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      toast.error(err.message || "Erreur lors de la suppression");
+      toast.error(t("feedback.deleteFailed", { message: err.message || String(err) }));
     } finally {
       setIsDeleting(null);
     }
   };
 
   const getFormatDetails = (format: string) => {
-    if (format === 'SINGLE_ELIM') return { icon: GitMerge, label: 'Élimination directe' };
-    if (format === 'ROUND_ROBIN') return { icon: LayoutGrid, label: 'Groupes "round-robin"' };
-    if (format === 'DOUBLE_ELIM') return { icon: CopyX, label: 'Double élimination' };
-    if (format === 'SWISS') return { icon: Network, label: 'Ronde suisse' };
-    return { icon: LayoutList, label: 'Inconnu' };
+    if (format === 'SINGLE_ELIM') return { icon: GitMerge, label: t("adminStructure.singleElimLabel") };
+    if (format === 'ROUND_ROBIN') return { icon: LayoutGrid, label: t("adminStructure.roundRobinLabel") };
+    if (format === 'DOUBLE_ELIM') return { icon: CopyX, label: t("adminStructure.doubleElimLabel") };
+    if (format === 'SWISS') return { icon: Network, label: t("adminStructure.swissLabel") };
+    return { icon: LayoutList, label: t("common.unknown") };
   };
 
   return (
@@ -118,7 +120,7 @@ export function StructureClient({
                   href={`/admin/${guildId}/tournaments/${tournamentId}/structure/${phase.id}`}
                   className="text-indigo-400 hover:text-indigo-300 text-sm font-bold px-4 py-2.5 transition-colors flex-1 text-left"
                 >
-                  Configurer
+                  {t("adminStructure.configure")}
                 </Link>
 
                 <div className="relative mr-2">
@@ -135,13 +137,13 @@ export function StructureClient({
                         href={`/admin/${guildId}/tournaments/${tournamentId}/matches?phase=${phase.id}`}
                         className="flex items-center gap-2 px-4 py-2.5 hover:bg-slate-800 text-slate-300 text-sm w-full text-left transition-colors"
                       >
-                        <Search className="w-4 h-4 text-slate-500" /> Matchs
+                        <Search className="w-4 h-4 text-slate-500" /> {t("adminSidebar.matches")}
                       </Link>
                       <Link
                         href={`/admin/${guildId}/tournaments/${tournamentId}/placement?phase=${phase.id}`}
                         className="flex items-center gap-2 px-4 py-2.5 hover:bg-slate-800 text-slate-300 text-sm w-full text-left border-b border-slate-800 pb-3 transition-colors"
                       >
-                        <Users className="w-4 h-4 text-slate-500" /> Placement
+                        <Users className="w-4 h-4 text-slate-500" /> {t("adminSidebar.placement")}
                       </Link>
                       <button
                         onClick={() => {
@@ -151,7 +153,7 @@ export function StructureClient({
                         disabled={isDeleting === phase.id}
                         className="flex items-center gap-2 px-4 py-3 hover:bg-rose-500/10 text-rose-400 text-sm w-full text-left font-bold disabled:opacity-50 mt-1 transition-colors cursor-pointer"
                       >
-                        <Trash2 className="w-4 h-4" /> {isDeleting === phase.id ? "Suppression..." : "Supprimer"}
+                        <Trash2 className="w-4 h-4" /> {isDeleting === phase.id ? t("adminStructure.deleting") : t("adminStructure.deletePhase")}
                       </button>
                     </div>
                   )}
@@ -168,8 +170,8 @@ export function StructureClient({
               <Plus className="w-8 h-8" strokeWidth={2.5} />
             </div>
             <div>
-              <p className="text-white font-bold text-lg">Nouvelle phase</p>
-              <p className="text-slate-500 text-xs mt-1">Sélectionnez le format ci-dessous :</p>
+              <p className="text-white font-bold text-lg">{t("adminStructure.newPhaseTitle")}</p>
+              <p className="text-slate-500 text-xs mt-1">{t("adminStructure.selectFormatBelow")}</p>
             </div>
 
             {/* Format Selection (always visible and premium designed) */}
@@ -182,7 +184,7 @@ export function StructureClient({
                 className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-emerald-500/30 hover:text-white cursor-pointer"
               >
                 <LayoutGrid className="w-4 h-4 text-emerald-400" />
-                Phase de Poules
+                {t("adminStructure.roundRobin")}
               </button>
               <button
                 onClick={(e) => {
@@ -192,7 +194,7 @@ export function StructureClient({
                 className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-indigo-500/30 hover:text-white cursor-pointer"
               >
                 <GitMerge className="w-4 h-4 text-indigo-400" />
-                Phase Finale (Arbre)
+                {t("adminStructure.singleElim")}
               </button>
               <button
                 onClick={(e) => {
@@ -202,7 +204,7 @@ export function StructureClient({
                 className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-violet-500/30 hover:text-white cursor-pointer"
               >
                 <CopyX className="w-4 h-4 text-violet-400" />
-                Double Élimination
+                {t("adminStructure.doubleElim")}
               </button>
               <button
                 onClick={(e) => {
@@ -212,7 +214,7 @@ export function StructureClient({
                 className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-amber-500/30 hover:text-white cursor-pointer"
               >
                 <Network className="w-4 h-4 text-amber-400" />
-                Ronde Suisse
+                {t("adminStructure.swiss")}
               </button>
             </div>
           </div>
@@ -225,15 +227,9 @@ export function StructureClient({
         isOpen={!!phaseToDelete}
         onClose={() => setPhaseToDelete(null)}
         onConfirm={deletePhase}
-        title="Supprimer la phase"
-        description={
-          phaseToDelete ? (
-            <span>
-              Êtes-vous sûr de vouloir supprimer la phase <strong className="text-white">"{phaseToDelete.name}"</strong> et tous ses matchs associés ?
-            </span>
-          ) : ""
-        }
-        confirmText="Supprimer définitivement"
+        title={t("adminStructure.deletePhaseTitle")}
+        description={phaseToDelete ? t("adminStructure.deleteConfirmNamed", { name: phaseToDelete.name }) : ""}
+        confirmText={t("common.deletePermanently")}
         variant="danger"
         icon={Trash2}
         isLoading={!!isDeleting}

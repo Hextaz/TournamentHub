@@ -1,5 +1,6 @@
 import { Client, Guild, ChannelType, CategoryChannel, PermissionFlagsBits, OverwriteData, PermissionResolvable } from 'discord.js';
 import { supabase } from '../lib/supabase';
+import { tBot, getGuildLanguage } from '../i18n';
 
 function hasPerm(list: PermissionResolvable[] | undefined, bit: bigint): boolean {
   if (!list) return false;
@@ -29,6 +30,8 @@ export class LifecycleService {
         .single();
 
       if (error || !tournament) throw new Error('Tournament not found');
+
+      const lang = await getGuildLanguage(guildId);
 
       const guild: Guild | undefined = discordClient.guilds.cache.get(guildId) || await discordClient.guilds.fetch(guildId).catch(() => undefined);
       if (!guild) throw new Error(`Guild ${guildId} not found by bot.`);
@@ -74,8 +77,8 @@ export class LifecycleService {
 
       const messagePayload: any = {
         embeds: [{
-          title: "🚀 Le Tournoi commence !",
-          description: `Bienvenue dans la zone sécurisée de l'évènement **${tournament.name}**.\nLes salons de match ainsi que l'arbre final seront générés ici sous peu.\n\nRestez à l'écoute des annonces !`,
+          title: tBot(lang, 'lifecycle.tournamentLaunchedTitle'),
+          description: tBot(lang, 'lifecycle.tournamentLaunchedDesc', { name: tournament.name }),
           color: 0x3b82f6,
         }]
       };
@@ -111,7 +114,7 @@ export class LifecycleService {
       if (tournament.discord_announcement_channel_id) {
         const annChannel = await guild.channels.fetch(tournament.discord_announcement_channel_id).catch(() => null);
         if (annChannel && annChannel.isTextBased()) {
-          await annChannel.send(`🏆 **${tournament.name}** est maintenant actif ! Les joueurs concernés ont accès à leur salon privatif.`);
+          await annChannel.send(tBot(lang, 'lifecycle.tournamentActiveAnnounce', { name: tournament.name }));
         }
       }
 
@@ -182,6 +185,8 @@ export class LifecycleService {
         throw new Error('Tournament does not have an active Discord Category. Please launch the tournament first.');
       }
 
+      const lang = await getGuildLanguage(guildId, tournament.id);
+
       const guild = discordClient.guilds.cache.get(guildId) || await discordClient.guilds.fetch(guildId).catch(() => undefined);
       if (!guild) throw new Error(`Guild ${guildId} not found.`);
 
@@ -234,8 +239,8 @@ export class LifecycleService {
           channelId = phaseChannel.id;
           await supabase.from('phases').update({ discord_channel_id: channelId }).eq('id', phaseId);
           const welcomeMsg = phase.format === 'SWISS'
-            ? `🇨🇭 Bienvenue dans l'espace de Rondes Suisses **${phase.name}** ! Coordonnez vos matchs ici.`
-            : `🏁 Bienvenue dans le bracket **${phase.name}** ! Cet espace est réservé aux capitaines de cette phase.`;
+            ? tBot(lang, 'lifecycle.swissWelcome', { name: phase.name })
+            : tBot(lang, 'lifecycle.bracketWelcome', { name: phase.name });
           await phaseChannel.send(welcomeMsg);
         } else {
           const phaseChannel = guild.channels.cache.get(channelId);
@@ -283,7 +288,7 @@ export class LifecycleService {
             });
             channelId = groupChannel.id;
             await supabase.from('groups').update({ discord_channel_id: channelId }).eq('id', group.id);
-            await groupChannel.send(`⚔️ Bienvenue dans le **Groupe ${group.name}** de la phase ${phase.name} ! Coordonnez vos matchs ici.`);
+            await groupChannel.send(tBot(lang, 'lifecycle.groupWelcome', { groupName: group.name, phaseName: phase.name }));
           } else {
             const groupChannel = guild.channels.cache.get(channelId);
             if (groupChannel && groupChannel.isTextBased() && 'permissionOverwrites' in groupChannel) {
