@@ -45,7 +45,7 @@ export default async function TournamentDetailPage(props: TournamentPageProps) {
           
           <div className="mt-6 flex flex-wrap gap-6 border-t pt-6 bg-gray-50 -mx-8 px-8 pb-4 rounded-b-xl border">
             <div>
-              <span className="block text-xs font-semibold text-gray-500 uppercase">{t(locale, "settings.checkinStart")}</span>
+              <span className="block text-xs font-semibold text-gray-500 uppercase">{t(locale, "adminSettingsPage.checkinStart")}</span>
               <span className="font-medium text-gray-800">
                 {tournament.checkin_start_at ? new Date(tournament.checkin_start_at).toLocaleString(dateLocale, { dateStyle: 'short', timeStyle: 'short' }) : t(locale, "tournamentsPage.notDefined")}
               </span>

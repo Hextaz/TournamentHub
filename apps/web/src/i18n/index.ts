@@ -1,4 +1,4 @@
-import { Locale, TranslationParams } from "./types";
+import { Locale, TranslationKey, TranslationParams, Translations } from "./types";
 import { fr } from "./locales/fr";
 import { en } from "./locales/en";
 
@@ -11,19 +11,15 @@ export const defaultLocale: Locale = "fr";
  * Example: getTranslationValue(fr, 'home.heroTitle') -> 'Le hub ultime pour vos tournois'
  */
 export function getTranslationValue(
-  dict: Record<string, any>,
+  dict: Translations,
   key: string,
 ): string | null {
   if (!key) return null;
-  const parts = key.split(".");
-  let current: any = dict;
+  let current: string | Translations | undefined = dict;
 
-  for (const part of parts) {
-    if (current && typeof current === "object" && part in current) {
-      current = current[part];
-    } else {
-      return null;
-    }
+  for (const part of key.split(".")) {
+    if (typeof current !== "object" || !(part in current)) return null;
+    current = current[part];
   }
 
   return typeof current === "string" ? current : null;
@@ -35,7 +31,7 @@ export function getTranslationValue(
  */
 export function t(
   locale: Locale,
-  key: string,
+  key: TranslationKey,
   params?: TranslationParams,
 ): string {
   const dict = dictionaries[locale] || dictionaries[defaultLocale];

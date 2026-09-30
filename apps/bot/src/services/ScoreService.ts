@@ -1,6 +1,7 @@
 import { ModalSubmitInteraction, ButtonInteraction, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, TextChannel, StringSelectMenuInteraction, ModalBuilder, TextInputBuilder, TextInputStyle } from "discord.js";
 import { supabase } from "../lib/supabase";
 import { LeaderboardService } from "./LeaderboardService";
+import { tBot, getGuildLanguage, getPhaseLanguage } from "../i18n";
 
 function isValidScore(val: number): boolean {
   return Number.isInteger(val) && val >= 0 && val <= 99;
@@ -21,41 +22,44 @@ export class ScoreService {
       .eq('id', matchId)
       .single();
 
+    const lang = await getPhaseLanguage(interaction.guildId, match?.phase_id);
+
     if (!match) {
-      return interaction.editReply({ content: '❌ Match introuvable.' });
+      return interaction.editReply({ content: tBot(lang, 'score.matchNotFound') });
     }
 
     if (match.status !== 'PENDING' && match.status !== 'IN_PROGRESS') {
-      return interaction.editReply({ content: '❌ Ce match n\'est plus en attente de résultat.' });
+      return interaction.editReply({ content: tBot(lang, 'score.notPending') });
     }
 
     const isTeam1 = match.teamA?.captain_discord_id === captainId;
     const isTeam2 = match.teamB?.captain_discord_id === captainId;
 
     if (!isTeam1 && !isTeam2) {
-      return interaction.editReply({ content: '❌ Vous n\'êtes pas capitaine dans ce match.' });
+      return interaction.editReply({ content: tBot(lang, 'score.notCaptain') });
     }
 
     const myTeamId = isTeam1 ? match.team1_id : match.team2_id;
     const myName = isTeam1 ? match.teamA?.name : match.teamB?.name;
-    const oppName = isTeam1 ? match.teamB?.name || 'Inconnu' : match.teamA?.name || 'Inconnu';
+    const unknownTeam = tBot(lang, 'score.unknownTeam');
+    const oppName = isTeam1 ? match.teamB?.name || unknownTeam : match.teamA?.name || unknownTeam;
 
     const modal = new ModalBuilder()
       .setCustomId(`modal_score_${matchId}_${myTeamId}`)
-      .setTitle('Signaler le score');
+      .setTitle(tBot(lang, 'score.modalTitle'));
 
     const myScoreInput = new TextInputBuilder()
       .setCustomId('my_score')
-      .setLabel(`Score de votre équipe (${myName})`)
-      .setPlaceholder('Exemple : 2')
+      .setLabel(tBot(lang, 'score.myScoreLabel', { name: myName ?? unknownTeam }))
+      .setPlaceholder(tBot(lang, 'score.myScorePlaceholder'))
       .setStyle(TextInputStyle.Short)
       .setMaxLength(2)
       .setRequired(true);
 
     const oppScoreInput = new TextInputBuilder()
       .setCustomId('opponent_score')
-      .setLabel(`Score adverse (${oppName})`)
-      .setPlaceholder('Exemple : 0')
+      .setLabel(tBot(lang, 'score.oppScoreLabel', { name: oppName }))
+      .setPlaceholder(tBot(lang, 'score.oppScorePlaceholder'))
       .setStyle(TextInputStyle.Short)
       .setMaxLength(2)
       .setRequired(true);
@@ -80,7 +84,8 @@ export class ScoreService {
     const oppScore = parseInt(oppScoreRaw, 10);
 
     if (isNaN(myScore) || isNaN(oppScore) || !isValidScore(myScore) || !isValidScore(oppScore)) {
-      return interaction.reply({ content: "❌ Les scores doivent être des nombres entiers entre 0 et 99.", ephemeral: true });
+      const guildLang = await getGuildLanguage(interaction.guildId);
+      return interaction.reply({ content: tBot(guildLang, 'score.invalidScore'), ephemeral: true });
     }
 
     // Defer immediately to avoid 3-second timeout
@@ -88,10 +93,11 @@ export class ScoreService {
 
     // 1. Check Match
     const { data: match } = await supabase.from("matches").select("*").eq("id", matchId).single();
-    if (!match) return interaction.editReply({ content: "❌ Match introuvable." });
+    const lang = await getPhaseLanguage(interaction.guildId, match?.phase_id);
+    if (!match) return interaction.editReply({ content: tBot(lang, 'score.matchNotFound') });
 
     if (match.status !== 'PENDING' && match.status !== 'IN_PROGRESS') {
-      return interaction.editReply({ content: '❌ Ce match n\'est plus en attente de résultat.' });
+      return interaction.editReply({ content: tBot(lang, 'score.notPending') });
     }
 
     const isTeamA = match.team1_id === reporterTeamId;
@@ -110,7 +116,7 @@ export class ScoreService {
       .eq("id", matchId);
 
     if (error) {
-      return interaction.editReply({ content: "❌ Erreur interne lors de la mise à jour des scores." });
+      return interaction.editReply({ content: tBot(lang, 'score.updateError') });
     }
 
     // 3. Avertir l'autre capitaine
@@ -118,36 +124,43 @@ export class ScoreService {
     const { data: myTeam } = await supabase.from("teams").select("name").eq("id", reporterTeamId).single();
 
     if (!oppTeam) {
-      return interaction.editReply({ content: "Score déclaré, mais impossible de trouver l'équipe adverse." });
+      return interaction.editReply({ content: tBot(lang, 'score.opponentNotFound') });
     }
 
+    const reporterName = myTeam?.name ?? tBot(lang, 'score.unknownTeam');
     const embed = new EmbedBuilder()
-      .setTitle("⏳ Score en attente de validation")
-      .setDescription(`L'équipe **${myTeam?.name}** a déclaré le score suivant :\n\n🔹 **${isTeamA ? myTeam?.name : oppTeam.name}** : ${team1Score}\n🔹 **${isTeamA ? oppTeam.name : myTeam?.name}** : ${team2Score}`)
+      .setTitle(tBot(lang, 'score.waitingValidationTitle'))
+      .setDescription(tBot(lang, 'score.waitingValidationDesc', {
+        myTeam: reporterName,
+        team1: isTeamA ? reporterName : oppTeam.name,
+        score1: team1Score,
+        team2: isTeamA ? oppTeam.name : reporterName,
+        score2: team2Score,
+      }))
       .setColor(0xFFA500);
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
       new ButtonBuilder()
         .setCustomId(`btn_score_val_${matchId}_${opponentTeamId}`)
-        .setLabel("Valider")
+        .setLabel(tBot(lang, 'score.validateBtn'))
         .setStyle(ButtonStyle.Success)
         .setEmoji("✅"),
       new ButtonBuilder()
         .setCustomId(`btn_score_deny_${matchId}_${opponentTeamId}`)
-        .setLabel("Contester")
+        .setLabel(tBot(lang, 'score.contestBtn'))
         .setStyle(ButtonStyle.Danger)
         .setEmoji("❌")
     );
 
     if (interaction.channel && 'send' in interaction.channel) {
       await interaction.channel.send({
-        content: `Attention <@${oppTeam.captain_discord_id}>, veuillez valider ou contester ce score ci-dessous.`,
+        content: tBot(lang, 'score.notifyOpponent', { captainId: oppTeam.captain_discord_id }),
         embeds: [embed],
         components: [row]
       });
       await interaction.deleteReply();
     } else {
-      await interaction.editReply({ content: "Score déclaré, mais impossible de notifier l'adversaire ici." });
+      await interaction.editReply({ content: tBot(lang, 'score.cannotNotifyHere') });
     }
   }
 
@@ -161,30 +174,32 @@ export class ScoreService {
 
     await interaction.deferReply();
 
+    const { data: match } = await supabase.from("matches").select("*").eq("id", matchId).single();
+    const lang = await getPhaseLanguage(interaction.guildId, match?.phase_id);
+
     const { data: team } = await supabase.from("teams").select("name, captain_discord_id").eq("id", expectedCaptainTeamId).single();
 
     if (!team || team.captain_discord_id !== interaction.user.id) {
-      return interaction.editReply({ content: "❌ Seul le capitaine adverse peut valider ou contester ce score." });
+      return interaction.editReply({ content: tBot(lang, 'score.onlyOpponentCanValidate') });
     }
 
-    const { data: match } = await supabase.from("matches").select("*").eq("id", matchId).single();
-    if (!match) return interaction.editReply({ content: "❌ Match introuvable." });
+    if (!match) return interaction.editReply({ content: tBot(lang, 'score.matchNotFound') });
 
     if (action === "deny") {
       await supabase.from("matches").update({ status: "CONTESTED" }).eq("id", matchId);
 
       const { data: settings } = await supabase.from("server_settings").select("to_role_id").eq("guild_id", interaction.guildId).single();
-      const toPing = settings?.to_role_id ? `<@&${settings.to_role_id}>` : "TO (Arbitre)";
+      const toPing = settings?.to_role_id ? `<@&${settings.to_role_id}>` : tBot(lang, 'score.toFallback');
 
       const embedBase = interaction.message.embeds[0];
-      if (!embedBase) return interaction.editReply({ content: "❌ Embed original introuvable." });
+      if (!embedBase) return interaction.editReply({ content: tBot(lang, 'score.originalEmbedNotFound') });
 
       const updatedEmbed = EmbedBuilder.from(embedBase)
-        .setTitle("❌ Score Contesté !")
+        .setTitle(tBot(lang, 'score.scoreContestedTitle'))
         .setColor(0xFF0000)
-        .setFooter({ text: "Le score a été contesté et est bloqué." });
+        .setFooter({ text: tBot(lang, 'score.scoreContestedFooter') });
 
-      await interaction.editReply({ content: `**SCORE CONTESTÉ** - Appel aux arbitres : ${toPing}`, embeds: [updatedEmbed], components: [] });
+      await interaction.editReply({ content: tBot(lang, 'score.scoreContestedContent', { toPing }), embeds: [updatedEmbed], components: [] });
 
     } else if (action === "val") {
       let winnerId = null;
@@ -205,15 +220,15 @@ export class ScoreService {
       await supabase.from("matches").update(updatePayload).eq("id", matchId);
 
       const embedBase = interaction.message.embeds[0];
-      if (!embedBase) return interaction.editReply({ content: "✅ Score validé." });
+      if (!embedBase) return interaction.editReply({ content: tBot(lang, 'score.scoreValidatedShort') });
 
       const updatedEmbed = EmbedBuilder.from(embedBase)
-        .setTitle("✅ Score Validé (Match Terminé)")
+        .setTitle(tBot(lang, 'score.scoreValidatedTitle'))
         .setColor(0x00FF00)
-        .setDescription(`Résultat final validé par l'équipe **${team.name}**:\n\n**Équipe A : ${match.team1_score}**\n**Équipe B : ${match.team2_score}**`)
-        .setFooter({ text: "Progression du bracket en cours..." });
+        .setDescription(tBot(lang, 'score.scoreValidatedDesc', { teamName: team.name, score1: match.team1_score, score2: match.team2_score }))
+        .setFooter({ text: tBot(lang, 'score.scoreValidatedFooter') });
 
-      await interaction.editReply({ content: "Match terminé !", embeds: [updatedEmbed], components: [] });
+      await interaction.editReply({ content: tBot(lang, 'score.matchFinished'), embeds: [updatedEmbed], components: [] });
 
       // Leaderboard calculation for group matches
       if (match.group_id) {
@@ -237,6 +252,8 @@ export class ScoreService {
         .single();
 
       if (phase && phase.format === "SWISS") {
+        const lang = await getPhaseLanguage(channel?.guildId, match.phase_id);
+        const unknownTeam = tBot(lang, 'score.unknownTeam');
         // Recalculate Swiss standings to make sure they are up-to-date
         await LeaderboardService.calculateSwissStandings(match.phase_id).catch(console.error);
 
@@ -296,8 +313,8 @@ export class ScoreService {
 
                 if (nextMatches && nextMatches.length > 0) {
                   const embed = new EmbedBuilder()
-                    .setTitle(`🇨🇭 Ronde ${nextRound} générée !`)
-                    .setDescription(`Le Round ${currentRound} est terminé. Voici les nouveaux affrontements pour le Round ${nextRound} :`)
+                    .setTitle(tBot(lang, 'score.swissRoundGenerated', { round: nextRound }))
+                    .setDescription(tBot(lang, 'score.swissRoundDesc', { prevRound: currentRound, round: nextRound }))
                     .setColor(0x0099FF);
 
                   const pings: string[] = [];
@@ -308,24 +325,24 @@ export class ScoreService {
                     const tB: any = Array.isArray(m.teamB) ? m.teamB[0] : m.teamB;
 
                     if (m.status === "BYE") {
-                      const taName = tA?.name || "Inconnu";
-                      matchesList.push(`🔹 **Match #${m.match_number}** : **${taName}** est **BYE** (Victoire automatique 1 - 0)`);
+                      const taName = tA?.name || unknownTeam;
+                      matchesList.push(tBot(lang, 'score.swissMatchBye', { number: m.match_number, name: taName }));
                       if (tA?.captain_discord_id) {
                         pings.push(`<@${tA.captain_discord_id}>`);
                       }
                     } else {
-                      const taName = tA?.name || "Inconnu";
-                      const tbName = tB?.name || "Inconnu";
-                      matchesList.push(`⚔️ **Match #${m.match_number}** : **${taName}** vs **${tbName}**`);
+                      const taName = tA?.name || unknownTeam;
+                      const tbName = tB?.name || unknownTeam;
+                      matchesList.push(tBot(lang, 'score.swissMatchVs', { number: m.match_number, name1: taName, name2: tbName }));
                       if (tA?.captain_discord_id) pings.push(`<@${tA.captain_discord_id}>`);
                       if (tB?.captain_discord_id) pings.push(`<@${tB.captain_discord_id}>`);
                     }
                   });
 
-                  embed.addFields({ name: "Matchs de la Ronde", value: matchesList.join("\n") });
+                  embed.addFields({ name: tBot(lang, 'score.swissRoundMatchesField'), value: matchesList.join("\n") });
 
                   await targetChannel.send({
-                    content: `🔔 Attention aux capitaines : ${pings.join(" ")}, vos nouveaux matchs de la Ronde ${nextRound} sont prêts !`,
+                    content: tBot(lang, 'score.swissCaptainsPing', { pings: pings.join(" "), round: nextRound }),
                     embeds: [embed]
                   });
                 }
@@ -345,20 +362,20 @@ export class ScoreService {
 
                 if (standings && standings.length > 0) {
                   const embed = new EmbedBuilder()
-                    .setTitle(`🏁 Rondes Suisses Terminées !`)
-                    .setDescription(`La phase **${phase.name}** s'est achevée après ${maxRounds} rondes. Voici le classement final :`)
+                    .setTitle(tBot(lang, 'score.swissFinishedTitle'))
+                    .setDescription(tBot(lang, 'score.swissFinishedDesc', { name: phase.name, rounds: maxRounds }))
                     .setColor(0xFFD700);
 
                   const standingsText = standings.map((s, idx) => {
                     const t: any = Array.isArray(s.team) ? s.team[0] : s.team;
-                    const tName = t?.name || "Inconnu";
-                    return `${idx + 1}. **${tName}** - ${s.points} pts (${s.wins} V, ${s.played} Joués)`;
+                    const tName = t?.name || unknownTeam;
+                    return tBot(lang, 'score.swissStandingLine', { rank: idx + 1, name: tName, points: s.points, wins: s.wins, played: s.played });
                   }).join("\n");
 
-                  embed.addFields({ name: "Classement Final", value: standingsText });
+                  embed.addFields({ name: tBot(lang, 'score.swissStandingsField'), value: standingsText });
 
                   await targetChannel.send({
-                    content: `🎉 **Félicitations à tous les participants !** La phase de Rondes Suisses est officiellement terminée.`,
+                    content: tBot(lang, 'score.swissFinishedCongrats'),
                     embeds: [embed]
                   });
                 }
@@ -372,9 +389,10 @@ export class ScoreService {
 
     if (!winnerId || !loserId) {
       if (channel) {
+        const lang = await getPhaseLanguage(channel.guildId, match.phase_id);
         const { data: settings } = await supabase.from("server_settings").select("to_role_id").eq("guild_id", channel.guildId).single();
-        const toPing = settings?.to_role_id ? `<@&${settings.to_role_id}>` : "TO (Arbitre)";
-        await channel.send(`⚠️ **MATCH NUL** pour le Match #${match.match_number || '?'}.\nLe système ne peut pas déterminer de vainqueur pour l'auto-routing.\n${toPing} - Une intervention manuelle est requise via le panel web.`);
+        const toPing = settings?.to_role_id ? `<@&${settings.to_role_id}>` : tBot(lang, 'score.toFallback');
+        await channel.send(tBot(lang, 'score.drawMatchNotice', { matchNumber: match.match_number || '?', toPing }));
       }
       return;
     }
@@ -433,12 +451,13 @@ export class ScoreService {
 
   private static async notifyMatchReady(team1Id: string, team2Id: string, channel: TextChannel | undefined) {
     const [{ data: ta }, { data: tb }] = await Promise.all([
-      supabase.from("teams").select("captain_discord_id, name").eq("id", team1Id).single(),
+      supabase.from("teams").select("captain_discord_id, name, tournament_id").eq("id", team1Id).single(),
       supabase.from("teams").select("captain_discord_id, name").eq("id", team2Id).single()
     ]);
 
     if (ta && tb && channel) {
-      await channel.send(`⚔️ **NOUVEAU MATCH DE BRACKET** ⚔️\n👉 L'équipe **${ta.name}** (<@${ta.captain_discord_id}>) affronte l'équipe **${tb.name}** (<@${tb.captain_discord_id}>) !\nPréparez-vous.`);
+      const lang = await getGuildLanguage(channel.guildId, ta.tournament_id);
+      await channel.send(tBot(lang, 'score.newBracketMatch', { team1: ta.name, cap1: ta.captain_discord_id, team2: tb.name, cap2: tb.captain_discord_id }));
     }
   }
 }

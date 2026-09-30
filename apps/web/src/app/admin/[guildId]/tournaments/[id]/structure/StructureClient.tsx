@@ -50,7 +50,7 @@ export function StructureClient({
       router.push(`/admin/${guildId}/tournaments/${tournamentId}/structure/${newPhase.id}`);
     } catch(e) {
       console.error(e);
-      alert("Erreur lors de la création de la phase.");
+      alert(t("feedback.createPhaseFailed"));
     }
   };
 
@@ -71,7 +71,7 @@ export function StructureClient({
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      alert("Erreur lors de la suppression : " + (err.message || err));
+      alert(t("feedback.deleteFailed", { message: err.message || String(err) }));
     } finally {
       setIsDeleting(null);
     }

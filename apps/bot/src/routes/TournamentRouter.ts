@@ -5,6 +5,9 @@ import { LifecycleService } from "../services/LifecycleService";
 import { ArchiveService } from "../services/ArchiveService";
 import { SchedulerService } from "../services/SchedulerService";
 import { getAuthenticatedGuildId, verifyTournamentGuild } from "../utils/tenant";
+import { LocaleSchema } from "@hub/shared";
+
+const OptionalLocaleSchema = LocaleSchema.optional();
 
 export const tournamentRouter = Router();
 
@@ -31,6 +34,11 @@ tournamentRouter.post("/", async (req, res) => {
       return res.status(400).json({ error: "guild_id and name are required" });
     }
 
+    const requestedLanguage = OptionalLocaleSchema.safeParse(req.body.language);
+    if (!requestedLanguage.success) {
+      return res.status(400).json({ error: "language must be 'fr' or 'en'" });
+    }
+
     // Fetch server default settings
     const { data: serverSettings } = await supabase
       .from("server_settings")
@@ -54,7 +62,7 @@ tournamentRouter.post("/", async (req, res) => {
         discord_checkin_channel_id: discord_checkin_channel_id || serverSettings?.checkin_channel_id || null,
         discord_captain_role_id: discord_captain_role_id || serverSettings?.captain_role_id || null,
         discord_to_role_id: discord_to_role_id || serverSettings?.to_role_id || null,
-        language: req.body.language || serverSettings?.language || "fr",
+        language: requestedLanguage.data ?? serverSettings?.language ?? "fr",
       })
       .select()
       .single();
@@ -95,6 +103,11 @@ tournamentRouter.put("/:id/settings", async (req, res) => {
       return res.status(404).json({ error: "Tournament not found" });
     }
 
+    const requestedLanguage = OptionalLocaleSchema.safeParse(language);
+    if (!requestedLanguage.success) {
+      return res.status(400).json({ error: "language must be 'fr' or 'en'" });
+    }
+
     let transitionToRegistration = false;
     let newStatus = currentTournament.status;
 
@@ -114,7 +127,7 @@ tournamentRouter.put("/:id/settings", async (req, res) => {
       discord_checkin_channel_id: discord_checkin_channel_id || null,
       discord_captain_role_id: discord_captain_role_id || null,
       discord_to_role_id: discord_to_role_id || null,
-      language: language && (language === 'en' || language === 'fr') ? language : (currentTournament.language || 'fr'),
+      language: requestedLanguage.data ?? currentTournament.language,
       updated_at: new Date().toISOString(),
     };
 

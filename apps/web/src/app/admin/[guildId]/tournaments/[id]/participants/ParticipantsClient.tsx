@@ -109,12 +109,12 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      alert("Erreur lors de l'ajout de l'équipe : " + (err.message || err));
+      alert(t("feedback.addTeamFailed", { message: err.message || String(err) }));
     }
   };
 
   const handleGenerateFakeTeams = async () => {
-    const userInput = window.prompt("Combien d'équipes fictives voulez-vous générer ?", "8");
+    const userInput = window.prompt(t("feedback.fakeTeamsPrompt"), "8");
     if (!userInput) return;
     const count = parseInt(userInput);
     if (!count || count <= 0) return;
@@ -134,10 +134,10 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       const newTeams = await res.json();
       setTeams(prev => [...prev, ...newTeams]);
       router.refresh();
-      alert(`${count} équipes ajoutées avec succès !`);
+      alert(t("feedback.fakeTeamsAdded", { count }));
     } catch (err: any) {
       console.error(err);
-      alert("Erreur lors de la génération d'équipes fictives : " + (err.message || err));
+      alert(t("feedback.fakeTeamsFailed", { message: err.message || String(err) }));
     }
   };
 
@@ -158,7 +158,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      alert("Erreur lors de la mise à jour : " + (err.message || err));
+      alert(t("feedback.updateFailed", { message: err.message || String(err) }));
     }
   };
 
@@ -200,7 +200,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      alert("Erreur lors de la modification de l'équipe : " + (err.message || err));
+      alert(t("feedback.editTeamFailed", { message: err.message || String(err) }));
     }
   };
 
@@ -221,7 +221,7 @@ export function ParticipantsClient({ tournamentId, guildId, initialTeams }: { to
       router.refresh();
     } catch (err: any) {
       console.error(err);
-      alert("Erreur lors de la suppression de l'équipe : " + (err.message || err));
+      alert(t("feedback.deleteTeamFailed", { message: err.message || String(err) }));
     }
   };
 

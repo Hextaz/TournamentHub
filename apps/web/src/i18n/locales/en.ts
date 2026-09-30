@@ -2,6 +2,7 @@ import { fr } from "./fr";
 
 export const en: typeof fr = {
   common: {
+    note: "Note:",
     loading: "Loading...",
     error: "Error",
     save: "Save",
@@ -32,6 +33,7 @@ export const en: typeof fr = {
     round: "Round",
   },
   nav: {
+    avatarAlt: "Discord avatar",
     brand: "TournamentHub",
     myServers: "My Servers",
     tournaments: "Tournaments",
@@ -196,6 +198,7 @@ export const en: typeof fr = {
     upcomingCount: "Upcoming ({count})",
   },
   participants: {
+    noneValidated: "No participant has been confirmed for this tournament yet.",
     title: "Participants",
     addParticipant: "Add participant",
     checkinStatus: "Check-in Status",
@@ -213,6 +216,7 @@ export const en: typeof fr = {
     playerNumber: "Player #{number}",
   },
   stages: {
+    notPublished: "The tournament schedule has not been published yet.",
     bracketNotGenerated: "The bracket has not been generated yet.",
     grandFinal: "Grand Final",
     grandFinalReset: "Grand Final - Reset",
@@ -265,7 +269,7 @@ export const en: typeof fr = {
     loading: "Loading settings...",
     botError: "Could not reach Bot for roles/channels. Enter IDs manually.",
     savedSuccess: "Settings saved successfully!",
-    saveError: "Error while saving: ",
+    saveError: "Error while saving: {message}",
     rolesSection: "Roles",
     captainRole: "Captain Role",
     toRole: "T.O Role (Tournament Organizer)",
@@ -441,6 +445,9 @@ export const en: typeof fr = {
     closedNotice: "Check-in for this tournament ended on {date} at {time}. You can now launch the tournament to create Discord infrastructure.",
   },
   adminSettingsPage: {
+    loadChannelsError: "Unable to load the server's Discord channels.",
+    loadRolesError: "Unable to load the server's Discord roles.",
+    discordDataError: "Could not reach the Discord bot. Please try again in a moment.",
     title: "Tournament Settings",
     subtitle: "Configure dates and Discord settings for this tournament.",
     datesSection: "Dates & Schedule",
@@ -540,5 +547,23 @@ export const en: typeof fr = {
     desc: "An unexpected error occurred. You can retry or return to the home page.",
     retry: "Retry",
     home: "Home",
+  },
+  feedback: {
+    launchFailed: "Error while launching: {message}",
+    closeFailed: "Error while closing: {message}",
+    visibilityFailed: "Error while changing visibility: {message}",
+    addTeamFailed: "Error while adding the team: {message}",
+    fakeTeamsPrompt: "How many fake teams do you want to generate?",
+    fakeTeamsAdded: "{count} teams added successfully!",
+    fakeTeamsFailed: "Error while generating fake teams: {message}",
+    updateFailed: "Error while updating: {message}",
+    updateFailedNoDetail: "Error while updating.",
+    editTeamFailed: "Error while editing the team: {message}",
+    deleteTeamFailed: "Error while deleting the team: {message}",
+    genericError: "Error: {message}",
+    createPhaseFailed: "Error while creating the phase.",
+    deleteFailed: "Error while deleting: {message}",
+    createTournamentFailed: "Error while creating the tournament: {message}",
+    settingsUpdated: "Settings updated!",
   },
 };

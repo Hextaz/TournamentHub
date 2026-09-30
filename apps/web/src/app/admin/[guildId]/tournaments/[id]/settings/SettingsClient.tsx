@@ -109,7 +109,7 @@ export function SettingsClient({ tournament, guildId, initialChannels = [], init
       setMessage({ type: 'success', text: t("adminSettings.savedSuccess") });
       router.refresh();
     } catch (err: any) {
-      setMessage({ type: 'error', text: t("adminSettings.saveError") + err.message });
+      setMessage({ type: 'error', text: t("adminSettings.saveError", { message: err.message }) });
     } finally {
       setIsSaving(false);
     }

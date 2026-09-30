@@ -12,6 +12,7 @@ import http from "http";
 import { logger } from "./utils/logger";
 import { authMiddleware, requireGuildAdmin } from "./middleware/auth";
 import { supabase } from "./lib/supabase";
+import { tBot, getGuildLanguage } from "./i18n";
 import { SchedulerService } from "./services/SchedulerService";
 import { ScoreService } from "./services/ScoreService";
 import { ArchiveService } from "./services/ArchiveService";
@@ -247,16 +248,17 @@ app.post("/api/discord/auto-setup", guildAdminGuard, async (req, res) => {
     const guild = await getGuild(res, guildId);
     if (!guild) return;
 
+    const lang = await getGuildLanguage(guildId);
     const captainRole = await guild.roles.create({
-      name: "Capitaine de Tournoi",
+      name: tBot(lang, "autoSetup.captainRoleName"),
       color: 0xffa500,
-      reason: "Bouton d'auto setup du back-office",
+      reason: tBot(lang, "autoSetup.auditReason"),
     });
 
     const checkinChannel = await guild.channels.create({
-      name: "check-in-tournoi",
+      name: tBot(lang, "autoSetup.checkinChannelName"),
       type: ChannelType.GuildText,
-      reason: "Bouton d'auto setup du back-office",
+      reason: tBot(lang, "autoSetup.auditReason"),
       permissionOverwrites: [
         {
           id: guild.id,
@@ -600,9 +602,11 @@ const bootstrap = async () => {
               .limit(1)
               .single();
 
+            const lang = await getGuildLanguage(guildId, currentTournament?.id);
+
             if (!currentTournament) {
               return interaction.reply({
-                content: "❌ Aucun tournoi n'est configuré pour ce serveur.",
+                content: tBot(lang, "checkin.noTournament"),
                 ephemeral: true,
               });
             }
@@ -616,15 +620,14 @@ const bootstrap = async () => {
 
             if (!team) {
               return interaction.reply({
-                content:
-                  "❌ Vous n'êtes le capitaine d'aucune équipe inscrite, ou le tournoi n'est pas actif.",
+                content: tBot(lang, "checkin.notCaptain"),
                 ephemeral: true,
               });
             }
 
             if (team.is_checked_in) {
               return interaction.reply({
-                content: `Tu es déjà validé ! (Équipe **${team.name}**)`,
+                content: tBot(lang, "checkin.alreadyCheckedIn", { teamName: team.name }),
                 ephemeral: true,
               });
             }
@@ -637,14 +640,13 @@ const bootstrap = async () => {
             if (updateError) {
               logger.error("Failed to check in team:", updateError);
               return interaction.reply({
-                content:
-                  "❌ Une erreur base de données est survenue lors de votre Check-in. Veuillez contacter un TO.",
+                content: tBot(lang, "checkin.dbError"),
                 ephemeral: true,
               });
             }
 
             return interaction.reply({
-              content: `✅ Check-in validé pour l'équipe **${team.name}** ! Bonne chance.`,
+              content: tBot(lang, "checkin.success", { teamName: team.name }),
               ephemeral: true,
             });
           } catch (err: any) {
@@ -677,8 +679,9 @@ const bootstrap = async () => {
         await command.execute(interaction);
       } catch (error) {
         logger.error(error);
+        const lang = await getGuildLanguage(interaction.guildId);
         await interaction.reply({
-          content: "Il y a eu une erreur lors de l'exécution de cette commande !",
+          content: tBot(lang, "common.commandError"),
           ephemeral: true,
         });
       }

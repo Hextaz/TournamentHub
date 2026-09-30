@@ -1,5 +1,6 @@
 export const fr = {
   common: {
+    note: "Note :",
     loading: "Chargement...",
     error: "Erreur",
     save: "Enregistrer",
@@ -30,6 +31,7 @@ export const fr = {
     round: "Round",
   },
   nav: {
+    avatarAlt: "Avatar Discord",
     brand: "TournamentHub",
     myServers: "Mes Serveurs",
     tournaments: "Tournois",
@@ -49,7 +51,7 @@ export const fr = {
       "Gérez vos événements communautaires, générez vos arbres de tournoi et synchronisez tout directement avec vos serveurs Discord.",
     connectDiscord: "Se connecter avec Discord",
     accessServers: "Accéder à mes serveurs",
-    feature1Title: "Bracket Generator",
+    feature1Title: "Générateur de Brackets",
     feature1Desc:
       "Arbres à double élimination, seed folding mathématique et avancement automatique gérés de façon optimale.",
     feature2Title: "Bot Discord Intégré",
@@ -170,7 +172,7 @@ export const fr = {
     score: "Score",
   },
   settings: {
-    title: "Tournament Settings",
+    title: "Paramètres du Tournoi",
     autoCreateBot: "✨ Créer automatiquement via le Bot",
     description:
       "Sélectionnez les rôles et salons Discord en direct à utiliser pour la configuration de vos tournois. Le bot les utilise pour restreindre l'accès et guider les joueurs.",
@@ -194,6 +196,7 @@ export const fr = {
     upcomingCount: "À venir ({count})",
   },
   participants: {
+    noneValidated: "Aucun participant n'est encore validé pour ce tournoi.",
     title: "Participants",
     addParticipant: "Ajouter un participant",
     checkinStatus: "Statut de Check-in",
@@ -211,6 +214,7 @@ export const fr = {
     playerNumber: "Joueur #{number}",
   },
   stages: {
+    notPublished: "Le déroulement du tournoi n'a pas encore été publié.",
     bracketNotGenerated: "L'arbre n'a pas encore été généré.",
     grandFinal: "Grande Finale",
     grandFinalReset: "Grande Finale - Reset",
@@ -263,7 +267,7 @@ export const fr = {
     loading: "Chargement des paramètres...",
     botError: "Impossible de joindre le Bot pour les rôles/salons. Vous devez renseigner les IDs manuellement.",
     savedSuccess: "Paramètres sauvegardés avec succès !",
-    saveError: "Erreur lors de la sauvegarde : ",
+    saveError: "Erreur lors de la sauvegarde : {message}",
     rolesSection: "Rôles",
     captainRole: "Rôle Capitaine",
     toRole: "Rôle T.O (Tournament Organizer)",
@@ -439,6 +443,9 @@ export const fr = {
     closedNotice: "Le check-in de ce tournoi s'est terminé le {date} à {time}. Vous pouvez à présent lancer le tournoi pour générer l'infrastructure Discord.",
   },
   adminSettingsPage: {
+    loadChannelsError: "Impossible de charger les salons Discord du serveur.",
+    loadRolesError: "Impossible de charger les rôles Discord du serveur.",
+    discordDataError: "Erreur de communication avec le bot Discord. Réessayez dans quelques instants.",
     title: "Paramètres du Tournoi",
     subtitle: "Configurez les dates de ce tournoi et les paramètres Discord.",
     datesSection: "Dates & Horaires",
@@ -538,5 +545,23 @@ export const fr = {
     desc: "Une erreur inattendue s'est produite. Vous pouvez réessayer ou revenir à l'accueil.",
     retry: "Réessayer",
     home: "Accueil",
+  },
+  feedback: {
+    launchFailed: "Erreur lors du lancement : {message}",
+    closeFailed: "Erreur lors de la clôture : {message}",
+    visibilityFailed: "Erreur lors de la modification de la visibilité : {message}",
+    addTeamFailed: "Erreur lors de l'ajout de l'équipe : {message}",
+    fakeTeamsPrompt: "Combien d'équipes fictives voulez-vous générer ?",
+    fakeTeamsAdded: "{count} équipes ajoutées avec succès !",
+    fakeTeamsFailed: "Erreur lors de la génération d'équipes fictives : {message}",
+    updateFailed: "Erreur lors de la mise à jour : {message}",
+    updateFailedNoDetail: "Erreur lors de la mise à jour.",
+    editTeamFailed: "Erreur lors de la modification de l'équipe : {message}",
+    deleteTeamFailed: "Erreur lors de la suppression de l'équipe : {message}",
+    genericError: "Erreur : {message}",
+    createPhaseFailed: "Erreur lors de la création de la phase.",
+    deleteFailed: "Erreur lors de la suppression : {message}",
+    createTournamentFailed: "Erreur lors de la création du tournoi : {message}",
+    settingsUpdated: "Paramètres mis à jour !",
   },
 };

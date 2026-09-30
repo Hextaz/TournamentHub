@@ -162,11 +162,11 @@ export default async function TournamentsPage() {
                   <div className="text-sm text-slate-300 mt-2 grid grid-cols-2 gap-2">
                     <div className="flex flex-col">
                       <span className="text-xs font-semibold text-emerald-400">{t(locale, "tournamentsPage.checkinStart")}</span>
-                      <span>{tourn.checkin_start_at ? new Date(tourn.checkin_start_at).toLocaleString() : t(locale, "tournamentsPage.notDefined")}</span>
+                      <span>{tourn.checkin_start_at ? new Date(tourn.checkin_start_at).toLocaleString(locale === "en" ? "en-US" : "fr-FR") : t(locale, "tournamentsPage.notDefined")}</span>
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs font-semibold text-rose-400">{t(locale, "tournamentsPage.checkinEnd")}</span>
-                      <span>{tourn.checkin_end_at ? new Date(tourn.checkin_end_at).toLocaleString() : t(locale, "tournamentsPage.notDefined")}</span>
+                      <span>{tourn.checkin_end_at ? new Date(tourn.checkin_end_at).toLocaleString(locale === "en" ? "en-US" : "fr-FR") : t(locale, "tournamentsPage.notDefined")}</span>
                     </div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-slate-800 w-full">

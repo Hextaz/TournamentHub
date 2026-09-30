@@ -11,7 +11,10 @@ describe("Internationalization (i18n) Module", () => {
   });
 
   it("should fallback to key if translation key does not exist", () => {
+    // Clés volontairement hors du dictionnaire : on vérifie le repli à l'exécution, que le typage interdit à la compilation.
+    // @ts-expect-error clé inexistante
     expect(t("fr", "nonexistent.key.path")).toBe("nonexistent.key.path");
+    // @ts-expect-error clé inexistante
     expect(t("en", "another.missing.key")).toBe("another.missing.key");
   });
 
@@ -34,5 +37,32 @@ describe("Internationalization (i18n) Module", () => {
   it("should correctly translate admin lifecycle keys", () => {
     expect(t("fr", "admin.launchTournament")).toBe("Lancer le Tournoi");
     expect(t("en", "admin.launchTournament")).toBe("Launch Tournament");
+  });
+});
+
+describe("Dictionary parity (fr / en)", () => {
+  const leaves = (obj: object, prefix = ""): Map<string, string> => {
+    const out = new Map<string, string>();
+    for (const [k, v] of Object.entries(obj)) {
+      const key = prefix ? `${prefix}.${k}` : k;
+      if (typeof v === "string") out.set(key, v);
+      else for (const [ck, cv] of leaves(v as object, key)) out.set(ck, cv);
+    }
+    return out;
+  };
+  const placeholders = (s: string) => [...s.matchAll(/\{\{?(\w+)\}?\}/g)].map((m) => m[1]).sort();
+  const frLeaves = leaves(fr);
+  const enLeaves = leaves(en);
+
+  it("I18N-PAR: every key uses the same {placeholders} in fr and en", () => {
+    for (const [key, value] of frLeaves) {
+      expect(placeholders(enLeaves.get(key) ?? ""), key).toEqual(placeholders(value));
+    }
+  });
+
+  it("I18N-PAR: no translation is left empty", () => {
+    for (const [key, value] of [...frLeaves, ...enLeaves]) {
+      expect(value.trim(), key).not.toBe("");
+    }
   });
 });

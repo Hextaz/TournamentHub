@@ -37,7 +37,7 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
       router.refresh();
     } catch(err: any) {
       console.error(err);
-      alert(`Erreur lors du lancement : ${err.message}`);
+      alert(t("feedback.launchFailed", { message: err.message }));
     } finally {
       setLoadingLaunch(false);
     }
@@ -65,7 +65,7 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
       router.refresh();
     } catch(err: any) {
       console.error(err);
-      alert(`Erreur lors de la clôture : ${err.message}`);
+      alert(t("feedback.closeFailed", { message: err.message }));
     } finally {
       setLoadingClose(false);
     }

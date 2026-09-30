@@ -30,7 +30,7 @@ export function VisibilityToggle({ tournamentId, guildId, initialIsPublic }: { t
       router.refresh();
     } catch (e: any) {
       console.error(e);
-      alert("Erreur lors de la modification de la visibilité : " + (e.message || e));
+      alert(t("feedback.visibilityFailed", { message: e.message || String(e) }));
     } finally {
       setIsLoading(false);
     }

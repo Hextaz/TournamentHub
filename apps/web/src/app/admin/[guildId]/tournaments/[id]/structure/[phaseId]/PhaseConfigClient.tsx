@@ -109,11 +109,11 @@ export function PhaseConfigClient({
       if (shouldRedirect) {
         router.push(`/admin/${guildId}/tournaments/${tournamentId}/structure`);
       } else {
-        alert("Paramètres mis à jour !");
+        alert(t("feedback.settingsUpdated"));
       }
     } catch (e) {
       console.error(e);
-      alert("Erreur lors de la mise à jour");
+      alert(t("feedback.updateFailedNoDetail"));
     } finally {
       setIsSubmitting(false);
     }

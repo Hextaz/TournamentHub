@@ -1,6 +1,7 @@
 import { Client, TextChannel, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle, Interaction } from 'discord.js';
 import { supabase } from '../lib/supabase';
-import { tBot, getGuildLanguage } from '../i18n';
+import { tBot, getGuildLanguage, isBotLocale } from '../i18n';
+import { logger } from '../utils/logger';
 
 const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
@@ -57,7 +58,7 @@ export class RegistrationService {
           }
         ],
         footer: {
-          text: `Tournoi ID: ${tournament.id}`
+          text: tBot(lang, 'registration.tournamentIdFooter', { id: tournament.id })
         }
       };
 
@@ -109,7 +110,8 @@ export class RegistrationService {
   private static async handleToggleLangButton(interaction: any) {
     const parts = interaction.customId.split('_');
     const tournamentId = parts[3];
-    const targetLang = (parts[4] as 'fr' | 'en') || 'en';
+    const requestedLang = parts[4];
+    const targetLang = isBotLocale(requestedLang) ? requestedLang : 'en';
 
     try {
       const { data: tournament } = await supabase
@@ -119,7 +121,7 @@ export class RegistrationService {
         .single();
 
       if (!tournament || tournament.guild_id !== interaction.guildId) {
-        return interaction.reply({ content: "❌ Tournoi introuvable ou accès non autorisé.", ephemeral: true });
+        return interaction.reply({ content: tBot(targetLang, 'registration.toggleUnauthorized'), ephemeral: true });
       }
 
       const embed = {
@@ -133,16 +135,16 @@ export class RegistrationService {
           }
         ],
         footer: {
-          text: `Tournoi ID: ${tournament.id}`
+          text: tBot(targetLang, 'registration.tournamentIdFooter', { id: tournament.id })
         }
       };
 
       return interaction.reply({ embeds: [embed], ephemeral: true });
     } catch (e) {
-      console.error("[RegistrationService] Language toggle error:", e);
+      logger.error("[RegistrationService] Language toggle error:", e);
     }
 
-    return interaction.reply({ content: "Language preference updated.", ephemeral: true });
+    return interaction.reply({ content: tBot(targetLang, 'common.commandError'), ephemeral: true });
   }
 
   private static async handleRegisterButton(interaction: any) {

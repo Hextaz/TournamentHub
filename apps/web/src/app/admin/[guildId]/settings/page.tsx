@@ -119,7 +119,7 @@ export default function SettingsPage({
       setMessage({ type: "success", text: t("adminSettings.savedSuccess") });
     } catch (err: any) {
       console.error(err);
-      setMessage({ type: "error", text: t("adminSettings.saveError") + err.message });
+      setMessage({ type: "error", text: t("adminSettings.saveError", { message: err.message }) });
     }
     setSaving(false);
   };

@@ -9,6 +9,10 @@ export type TournamentStatus = "DRAFT" | "REGISTRATION" | "ACTIVE" | "COMPLETED"
 // Phase Types
 export type PhaseType = "ROUND_ROBIN" | "SINGLE_ELIM" | "SWISS" | "DOUBLE_ELIM";
 
+// Supported Languages (tournaments.language / server_settings.language)
+export const LocaleSchema = z.enum(["fr", "en"]);
+export type Locale = z.infer<typeof LocaleSchema>;
+
 // Common Domain Interfaces
 export interface Tournament {
   id: string;
@@ -18,7 +22,7 @@ export interface Tournament {
   is_public: boolean;
   status: TournamentStatus;
   game_type: GameType;
-  language?: 'fr' | 'en' | string;
+  language: Locale;
   start_at?: string | null;
   checkin_start_at?: string | null;
   checkin_end_at?: string | null;
@@ -80,7 +84,7 @@ export const CreateTournamentSchema = z.object({
   guild_id: z.string().min(1, "guild_id obligatoire"),
   description: z.string().optional().nullable(),
   game_type: z.string().default("GENERIC"),
-  language: z.string().optional(),
+  language: LocaleSchema.optional(),
   start_at: z.string().optional().nullable(),
   checkin_start_at: z.string().optional().nullable(),
   checkin_end_at: z.string().optional().nullable(),

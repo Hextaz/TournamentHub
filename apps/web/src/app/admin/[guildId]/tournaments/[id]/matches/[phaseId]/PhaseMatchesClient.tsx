@@ -392,8 +392,8 @@ export function PhaseMatchesClient({ tournamentId, guildId, phase, initialMatche
 
       return (
         <div className="bg-slate-950 flex flex-col gap-2 py-6 overflow-y-auto max-h-[calc(100vh-140px)]">
-          {renderRoundRow(wbRoundNumbers, t("adminMatches.winnerBracket"))}
-          {renderRoundRow(lbRoundNumbers, t("adminMatches.loserBracket"))}
+          {renderRoundRow(wbRoundNumbers, t("stages.winnerBracket"))}
+          {renderRoundRow(lbRoundNumbers, t("stages.loserBracket"))}
         </div>
       );
     }

@@ -108,7 +108,7 @@ export default function TournamentsPage({
 
     } catch (err: any) {
       console.error(err);
-      alert("Erreur lors de la création du tournoi : " + (err.message || err));
+      alert(t("feedback.createTournamentFailed", { message: err.message || String(err) }));
     } finally {
       setCreating(false);
     }
@@ -134,7 +134,7 @@ export default function TournamentsPage({
         <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-xl p-4 flex gap-4 items-center text-yellow-500">
           <AlertTriangle className="w-6 h-6 shrink-0" />
           <p>
-            <strong>Note :</strong> {t("adminTournaments.activeNotice", { name: activePublishedTournament.name })}
+            <strong>{t("common.note")}</strong> {t("adminTournaments.activeNotice", { name: activePublishedTournament.name })}
           </p>
         </div>
       )}

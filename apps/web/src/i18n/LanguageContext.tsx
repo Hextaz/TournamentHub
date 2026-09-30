@@ -1,21 +1,21 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Locale, TranslationParams } from "./types";
+import { Locale, TranslationKey, TranslationParams } from "./types";
 import { defaultLocale, t as translate } from "./index";
 
 interface LanguageContextType {
   locale: Locale;
   setLocale: (locale: Locale) => void;
-  t: (key: string, params?: TranslationParams) => string;
+  t: (key: TranslationKey, params?: TranslationParams) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(
   undefined,
 );
 
-const STORAGE_KEY = "tournament_hub_locale";
+// Seule source de vérité : lu côté serveur par le RootLayout (avec repli sur Accept-Language), qui fournit `initialLocale`.
 const COOKIE_NAME = "NEXT_LOCALE";
 
 export function LanguageProvider({
@@ -30,42 +30,11 @@ export function LanguageProvider({
     initialLocale || defaultLocale,
   );
 
-  useEffect(() => {
-    // 1. Try reading from localStorage on mount
-    const saved = localStorage.getItem(STORAGE_KEY) as Locale | null;
-    if (saved === "fr" || saved === "en") {
-      setLocaleState((prev) => {
-        if (saved !== prev) {
-          document.documentElement.lang = saved;
-          document.cookie = `${COOKIE_NAME}=${saved}; path=/; max-age=31536000; SameSite=Lax`;
-          return saved;
-        }
-        return prev;
-      });
-    } else {
-      // Check navigator language
-      const navLang = navigator.language?.toLowerCase();
-      if (navLang?.startsWith("en")) {
-        setLocaleState((prev) => {
-          if (prev !== "en") {
-            document.documentElement.lang = "en";
-            document.cookie = `${COOKIE_NAME}=en; path=/; max-age=31536000; SameSite=Lax`;
-            return "en";
-          }
-          return prev;
-        });
-      }
-    }
-  }, []);
-
   const setLocale = useCallback(
     (newLocale: Locale) => {
       setLocaleState(newLocale);
-      if (typeof window !== "undefined") {
-        localStorage.setItem(STORAGE_KEY, newLocale);
-        document.cookie = `${COOKIE_NAME}=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
-        document.documentElement.lang = newLocale;
-      }
+      document.cookie = `${COOKIE_NAME}=${newLocale}; path=/; max-age=31536000; SameSite=Lax`;
+      document.documentElement.lang = newLocale;
       // Instantly refresh Server Component routes without manual page reload
       router.refresh();
     },
@@ -73,7 +42,7 @@ export function LanguageProvider({
   );
 
   const t = useCallback(
-    (key: string, params?: TranslationParams) => {
+    (key: TranslationKey, params?: TranslationParams) => {
       return translate(locale, key, params);
     },
     [locale]
@@ -99,7 +68,7 @@ export function useTranslation() {
     return {
       locale: defaultLocale,
       setLocale: () => {},
-      t: (key: string, params?: TranslationParams) =>
+      t: (key: TranslationKey, params?: TranslationParams) =>
         translate(defaultLocale, key, params),
     };
   }

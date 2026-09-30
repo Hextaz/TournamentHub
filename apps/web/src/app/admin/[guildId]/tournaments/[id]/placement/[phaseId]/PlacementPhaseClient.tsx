@@ -209,7 +209,7 @@ export function PlacementPhaseClient({
       router.refresh();
     } catch (e: any) {
       console.error(e);
-      alert("Erreur: " + (e.message || e));
+      alert(t("feedback.genericError", { message: e.message || String(e) }));
     } finally {
       setIsSaving(false);
     }

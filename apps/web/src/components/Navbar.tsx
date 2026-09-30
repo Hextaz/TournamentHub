@@ -53,7 +53,7 @@ export default function Navbar() {
                       session.user?.image ||
                       "https://cdn.discordapp.com/embed/avatars/0.png"
                     }
-                    alt="Discord Avatar"
+                    alt={t("nav.avatarAlt")}
                     className="w-8 h-8 rounded-full border-2 border-blue-500"
                   />
                   <span className="font-medium text-sm">
@@ -103,7 +103,7 @@ export default function Navbar() {
                     session.user?.image ||
                     "https://cdn.discordapp.com/embed/avatars/0.png"
                   }
-                  alt="Discord Avatar"
+                  alt={t("nav.avatarAlt")}
                   className="w-10 h-10 rounded-full border-2 border-blue-500"
                 />
                 <span className="font-medium text-base text-white">

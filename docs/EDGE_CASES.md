@@ -113,6 +113,21 @@ Ce document consigne l'ensemble des **cas limites**, **invariants de sécurité 
 
 ---
 
+## 7. 🌍 Internationalisation FR / EN (`apps/*/src/i18n/`, `.agents/skills/i18n-auditor/`)
+
+| ID | Composant | Scénario | Comportement Attendu | Couverture |
+| :--- | :--- | :--- | :--- | :--- |
+| **I18N-01** | Dictionnaires web & bot | Une clé ajoutée dans `fr.ts` est oubliée dans `en.ts` (ou l'inverse). | `en` est typé `typeof fr` : la compilation échoue. Parité des `{placeholders}` et absence de valeur vide vérifiées par `i18n.test.ts` (web & bot). | ✅ |
+| **I18N-02** | `t()` / `tBot()` | Appel avec une clé inexistante ou dans le mauvais namespace. | Clés typées (`TranslationKey`, `BotTranslationKey`) : erreur de compilation. À l'exécution, repli `en ➜ fr ➜ clé brute` (`i18n.test.ts`). | ✅ |
+| **I18N-03** | `getGuildLanguage` / `getPhaseLanguage` | Résolution de la langue d'un message bot. | Priorité tournoi ➜ serveur ➜ `fr` ; un match remonte à son tournoi via `phases.tournament_id` (`i18n.test.ts`, `ScoreService.i18n.test.ts`). | ✅ |
+| **I18N-04** | `getGuildLanguage` | Panne Supabase pendant la lecture de la langue. | `logger.warn` avec l'erreur, puis repli sur la locale suivante (aucun `catch` vide). « Aucune ligne » (`PGRST116`) n'est pas une panne. | ✅ |
+| **I18N-05** | Routes `POST /tournaments`, `PUT /tournaments/:id/settings`, `PUT /server-settings` + DB | Langue invalide (`"de"`, `""`) envoyée par le client. | `400` via `LocaleSchema` ; contrainte `CHECK (language IN ('fr','en'))` en base. | 🛡️ |
+| **I18N-06** | `btn_toggle_lang_*` (`RegistrationService`) | `customId` forgé avec une langue inconnue. | `isBotLocale` ➜ repli sur `en`, jamais de cast aveugle. | 🛡️ |
+| **I18N-07** | Server Components web | Cookie `NEXT_LOCALE` falsifié. | `getServerLocale()` valide via `LocaleSchema` et retombe sur `fr` (pages migrées ; les autres pages castent encore le cookie mais `t()` retombe sur `fr`). | 🛡️ |
+| **I18N-08** | Dates des Server Components | Horaires de check-in formatés sur Vercel (UTC). | Les dates doivent être formatées avec le fuseau de l'organisateur. Actuellement affichées en UTC (décalage de 1 à 2 h pour la France). | ⚠️ |
+
+---
+
 ## 📌 Dette de Couverture Prioritaire
 
 Les lignes ⚠️ ci-dessus sont des **bugs latents connus**. Ordre de traitement recommandé :
@@ -121,5 +136,6 @@ Les lignes ⚠️ ci-dessus sont des **bugs latents connus**. Ordre de traitemen
 3. **REG-06** : roster partiel ➜ passer par une RPC transactionnelle.
 4. **SWS-05** : barème BYE suisse codé en dur.
 5. **SCR-07** : repli non atomique de `assign_team_to_match`.
+6. **I18N-08** : fuseau horaire des dates rendues côté serveur.
 
 Les lignes 🛡️ des domaines **BRK**, **SWS** et **SCR** sont les premières candidates au TDD (`/test-audit`).
