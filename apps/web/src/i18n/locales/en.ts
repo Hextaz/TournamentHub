@@ -34,6 +34,7 @@ export const en: typeof fr = {
     close: "Close",
     validate: "Submit",
     deletePermanently: "Delete permanently",
+    typeToConfirm: "Type \"{phrase}\" to confirm:",
   },
   nav: {
     avatarAlt: "Discord avatar",
@@ -176,6 +177,7 @@ export const en: typeof fr = {
     botCommunicationError: "Could not reach the Discord bot",
     closeConfirm: "Are you sure you want to close this tournament? This will archive the tournament and permanently delete the associated Discord channels and category.",
     closeConfirmButton: "Close permanently",
+    closeConfirmPhrase: "CLOSE",
   },
   settings: {
     title: "Tournament Settings",

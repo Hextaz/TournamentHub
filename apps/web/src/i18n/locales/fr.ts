@@ -32,6 +32,7 @@ export const fr = {
     close: "Fermer",
     validate: "Valider",
     deletePermanently: "Supprimer définitivement",
+    typeToConfirm: "Tapez « {phrase} » pour confirmer :",
   },
   nav: {
     avatarAlt: "Avatar Discord",
@@ -174,6 +175,7 @@ export const fr = {
     botCommunicationError: "Erreur de communication avec le bot Discord",
     closeConfirm: "Êtes-vous sûr de vouloir clôturer ce tournoi ? Cette action archivera le tournoi et supprimera définitivement les salons et la catégorie Discord associés.",
     closeConfirmButton: "Clôturer définitivement",
+    closeConfirmPhrase: "CLOTURER",
   },
   settings: {
     title: "Paramètres du Tournoi",
