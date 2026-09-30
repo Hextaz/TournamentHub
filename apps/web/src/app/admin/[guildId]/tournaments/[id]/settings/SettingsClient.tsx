@@ -10,6 +10,7 @@ import { Save, CalendarDays, RefreshCw, MessageSquare, Shield } from "lucide-rea
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 export function SettingsClient({ tournament, guildId, initialChannels = [], initialRoles = [] }: { tournament: any; guildId: string; initialChannels?: any[]; initialRoles?: any[] }) {
   const router = useRouter();
@@ -102,14 +103,13 @@ export function SettingsClient({ tournament, guildId, initialChannels = [], init
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
       setMessage({ type: 'success', text: t("adminSettings.savedSuccess") });
       router.refresh();
-    } catch (err: any) {
-      setMessage({ type: 'error', text: t("adminSettings.saveError", { message: err.message }) });
+    } catch (err: unknown) {
+      setMessage({ type: 'error', text: t("adminSettings.saveError", { message: getErrorMessage(err) ?? t("common.unknown") }) });
     } finally {
       setIsSaving(false);
     }

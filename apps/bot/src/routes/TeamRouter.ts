@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { supabase } from "../lib/supabase";
 import { getAuthenticatedGuildId, verifyTeamGuild, verifyTournamentGuild } from "../utils/tenant";
+import { MAX_FAKE_TEAMS } from "@hub/shared";
 
 export const teamRouter = Router();
 
@@ -69,8 +70,8 @@ teamRouter.post("/generate-fake", async (req, res) => {
       return res.status(400).json({ error: "tournament_id and a positive count integer are required" });
     }
 
-    // Plafonner la génération d'équipes fictives à 64 max pour éviter le DoS / Memory Exhaustion
-    const safeCount = Math.min(Math.max(1, count), 64);
+    // Plafonner la génération d'équipes fictives pour éviter le DoS / Memory Exhaustion
+    const safeCount = Math.min(Math.max(1, count), MAX_FAKE_TEAMS);
 
     const fakeTeams = Array.from({ length: safeCount }).map(() => ({
       tournament_id,

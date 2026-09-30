@@ -91,8 +91,15 @@ function hardcodedCandidates(scope, file, text) {
       if (!s || /^[\w.-]+$/.test(s) && !FRENCH_HINT_RE.test(s)) continue; // identifiants, clés, classes
       if (/^(https?:|\/|#|[\w-]+\s[\w-]+\s[\w-]+$)/.test(s) && !FRENCH_HINT_RE.test(s)) continue;
       if (/className|=>|&&|\|\||===|^\)/.test(s)) continue; // fragments de code JSX, pas du texte
+      if (/^[\w.<>\[\]]+(\s*\|\s*[\w.<>\[\]]+)+$/.test(s)) continue; // union de types TS (`void | Promise`)
       if (!FRENCH_HINT_RE.test(s) && !/\s/.test(s)) continue;
       hits.push({ file: relative(ROOT, file), line: lineOf(text, m.index), text: s.slice(0, 80) });
+    }
+  }
+  // Côté web, le message d'une Error levée finit souvent dans un toast : on signale ceux rédigés en français.
+  if (scope.name === "web") {
+    for (const m of text.matchAll(/\bnew Error\([^;]*?["'`]([^"'`]{3,})["'`]/g)) {
+      if (FRENCH_HINT_RE.test(m[1])) hits.push({ file: relative(ROOT, file), line: lineOf(text, m.index), text: m[1].slice(0, 80) });
     }
   }
   return hits;

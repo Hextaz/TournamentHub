@@ -79,6 +79,7 @@ Ce document consigne l'ensemble des **cas limites**, **invariants de sécurité 
 | **REG-04** | `finalizeRegistration` | Session d'inscription expirée (> 15 min) ou bot redémarré entre les deux modals. | Message `Session d'inscription introuvable ou expirée`. Le cache est en mémoire : un redémarrage PM2 perd les sessions en cours. | 🛡️ |
 | **REG-05** | `finalizeRegistration` | Double-clic sur « Terminer l'inscription ». | Le cache est vidé **avant** l'insertion : le second clic tombe sur la session expirée (REG-04). | 🛡️ |
 | **REG-06** | `finalizeRegistration` | Échec d'insertion d'un `team_member`. | L'équipe est créée, l'erreur est listée et le capitaine est averti de contacter un TO. L'opération **n'est pas transactionnelle**. | ⚠️ Roster partiel possible |
+| **REG-07** | `POST /api/teams/generate-fake` + `ParticipantsClient` | Demande de plus d'équipes fictives que le plafond. | Le bot plafonne à `MAX_FAKE_TEAMS` (`@hub/shared`, 64), la modale borne la saisie à la même valeur et le toast annonce le nombre **réellement créé** (réponse du bot), jamais le nombre demandé. | 🛡️ |
 | **CHK-01** | `SchedulerService.init` / `catchUpCheckin` | Le bot redémarre pendant une fenêtre de check-in ouverte. | Rattrapage : si `checkin_message_id` existe, on ne republie rien. Sinon, on scanne les 10 derniers messages du salon à la recherche d'un bouton `btn_checkin` avant de republier. | 🛡️ |
 | **CHK-02** | `scheduleTournament` | Fenêtre de check-in de moins de 30 min (ou de moins de 10 min). | Les rappels à J-30 min (ou J-10 min) ne sont pas programmés. | 🛡️ |
 | **CHK-03** | `scheduleTournament` | Replanification d'un tournoi (dates modifiées). | `cancelTournamentJobs` est appelé d'abord : aucun job en double. | 🛡️ |
@@ -110,6 +111,7 @@ Ce document consigne l'ensemble des **cas limites**, **invariants de sécurité 
 | **DISC-03** | `closeTournament` | Serveur ou catégorie Discord introuvable (supprimé manuellement). | Warning loggé. Le statut passe quand même à `COMPLETED` en DB. | 🛡️ |
 | **DISC-04** | `syncPhaseChannels` | Une équipe est retirée d'une phase déjà synchronisée. | Les overwrites membres obsolètes (`type === 1`) sont supprimés : un ex-capitaine perd l'accès au salon. | 🛡️ |
 | **DISC-05** | `backgroundDiscordCleanup` | Retrait du rôle Capitaine sur un grand nombre de membres. | Traitement par lots de 5 avec 100 ms de pause (rate limit Discord). Un échec individuel est loggé sans interrompre le lot. | 🛡️ |
+| **DISC-06** | `TournamentLifecycleManager` (web) | Le bot répond en erreur (403, 500) au lancement ou à la clôture. | Le motif renvoyé (`{ error }` JSON ou texte, lu par `readApiError`) s'affiche dans un toast d'erreur et la modale reste ouverte ; aucun toast de succès. La clôture, irréversible, exige de retaper la phrase `admin.closeConfirmPhrase`. | ✅ `apps/web/src/utils/__tests__/errors.test.ts` (lecture du motif) · 🛡️ (UI) |
 
 ---
 
