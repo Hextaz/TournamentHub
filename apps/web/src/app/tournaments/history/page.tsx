@@ -7,6 +7,7 @@ import { Trash2 } from "lucide-react";
 import { useToast } from "@/context/ToastContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 export default function TournamentsHistoryPage() {
   const guildId = process.env.NEXT_PUBLIC_DISCORD_GUILD_ID || "";
@@ -42,15 +43,14 @@ export default function TournamentsHistoryPage() {
         method: "DELETE",
       });
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || t("tournamentsHistory.deleteFailed"));
+        throw new Error((await readApiError(res)) ?? t("tournamentsHistory.deleteFailed"));
       }
       setHistory((prev) => prev.filter((tItem) => tItem.id !== tournamentToDelete.id));
       setTournamentToDelete(null);
       toast.success(t("tournamentsHistory.deletedSuccess"));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(err.message || t("tournamentsHistory.deleteFailed"));
+      toast.error(getErrorMessage(err) ?? t("tournamentsHistory.deleteFailed"));
     } finally {
       setDeleting(false);
     }

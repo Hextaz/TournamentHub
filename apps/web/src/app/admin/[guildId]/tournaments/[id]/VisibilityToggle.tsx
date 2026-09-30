@@ -6,6 +6,7 @@ import { Send, Globe, Lock } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/context/ToastContext";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 export function VisibilityToggle({ tournamentId, guildId, initialIsPublic }: { tournamentId: string, guildId: string, initialIsPublic: boolean }) {
   const [isPublic, setIsPublic] = useState(initialIsPublic);
@@ -24,16 +25,15 @@ export function VisibilityToggle({ tournamentId, guildId, initialIsPublic }: { t
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || t("common.unknown"));
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
       setIsPublic(!isPublic);
       toast.success(!isPublic ? t("feedback.nowPublic") : t("feedback.nowPrivate"));
       router.refresh();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      toast.error(t("feedback.visibilityFailed", { message: e.message || String(e) }));
+      toast.error(t("feedback.visibilityFailed", { message: getErrorMessage(e) ?? t("common.unknown") }));
     } finally {
       setIsLoading(false);
     }

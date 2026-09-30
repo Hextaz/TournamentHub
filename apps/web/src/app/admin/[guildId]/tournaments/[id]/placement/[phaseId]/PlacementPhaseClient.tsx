@@ -20,6 +20,7 @@ import { supabase } from "@/lib/supabase";
 import { useToast } from "@/context/ToastContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 // Helper for bracket visually formatting the first round
 const BRACKET_PAIRS: Record<number, number[][]> = {
@@ -204,13 +205,15 @@ export function PlacementPhaseClient({
         },
       );
 
-      if (!res.ok) { let b={error: "Erreur de sauvegarde"}; try { b = await res.json(); } catch(e){} throw new Error(b.error || "Erreur de sauvegarde"); }
+      if (!res.ok) {
+        throw new Error((await readApiError(res)) ?? t("adminPlacement.saveFailed"));
+      }
       setShowSaveModal(false);
       toast.success(t("adminPlacement.saveSuccess"));
       router.refresh();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      toast.error(t("feedback.genericError", { message: e.message || String(e) }));
+      toast.error(t("feedback.genericError", { message: getErrorMessage(e) ?? t("common.unknown") }));
     } finally {
       setIsSaving(false);
     }

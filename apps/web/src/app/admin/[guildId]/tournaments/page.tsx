@@ -12,6 +12,7 @@ import { botApiFetch } from '@/utils/api';
 import { useToast } from "@/context/ToastContext";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 const formSchema = z.object({
   name: z.string().min(3, "Le nom doit contenir au moins 3 caractères"),
@@ -67,16 +68,15 @@ export default function TournamentsPage({
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || t("adminTournaments.deleteForbidden"));
+        throw new Error((await readApiError(response)) ?? t("adminTournaments.deleteForbidden"));
       }
 
       setTournamentToDelete(null);
       toast.success(t("adminTournaments.deletedSuccess"));
       await fetchTournaments();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Delete Error:", err);
-      toast.error(t("feedback.deleteFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.deleteFailed", { message: getErrorMessage(err) ?? t("common.unknown") }));
     } finally {
       setDeleting(false);
     }
@@ -101,8 +101,7 @@ export default function TournamentsPage({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
       const created = await res.json();
@@ -114,9 +113,9 @@ export default function TournamentsPage({
 
       router.push(`/admin/${guildId}/tournaments/${created.id}`);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      toast.error(t("feedback.createTournamentFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.createTournamentFailed", { message: getErrorMessage(err) ?? t("common.unknown") }));
     } finally {
       setCreating(false);
     }

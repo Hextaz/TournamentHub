@@ -414,6 +414,7 @@ export const en: typeof fr = {
     updateSuccess: "Match updated successfully!",
   },
   adminPlacement: {
+    saveFailed: "Error while saving the seeding.",
     noPhasesFound: "No phase found. Please create a phase from the Structure tab first.",
     managePlacements: "Manage placements",
     emptySlot: "Empty",

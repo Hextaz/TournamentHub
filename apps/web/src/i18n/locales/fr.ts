@@ -412,6 +412,7 @@ export const fr = {
     updateSuccess: "Match mis à jour avec succès !",
   },
   adminPlacement: {
+    saveFailed: "Erreur lors de la sauvegarde du placement.",
     noPhasesFound: "Aucune phase trouvée. Veuillez générer une phase depuis l'onglet Structure d'abord.",
     managePlacements: "Gérer les placements",
     emptySlot: "Vide",
