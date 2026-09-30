@@ -2,6 +2,8 @@ export const dynamic = 'force-dynamic';
 
 import { supabase } from "@/lib/supabase";
 import { ParticipantsClientView } from "./ParticipantsClientView";
+import { t } from "@/i18n";
+import { getServerLocale } from "@/i18n/server";
 
 export default async function PublicParticipantsPage({
   params,
@@ -9,6 +11,7 @@ export default async function PublicParticipantsPage({
   params: Promise<{ guildId: string; id: string }>;
 }) {
   const { id } = await params;
+  const locale = await getServerLocale();
 
   // Fetch all checked-in teams for the tournament
   const { data: teams } = await supabase
@@ -21,7 +24,7 @@ export default async function PublicParticipantsPage({
   if (!teams || teams.length === 0) {
     return (
       <div className="py-12 bg-[#151722] rounded-xl border border-slate-800/50 flex flex-col items-center justify-center text-slate-500 animate-in fade-in duration-300">
-        <p>Aucun participant n'est encore validé pour ce tournoi.</p>
+        <p>{t(locale, "participants.noneValidated")}</p>
       </div>
     );
   }

@@ -8,6 +8,7 @@ import {
   EmbedBuilder,
 } from "discord.js";
 import { supabase } from "../lib/supabase";
+import { tBot, getGuildLanguage } from "../i18n";
 
 export class SchedulerService {
   private static activeJobs: Map<string, schedule.Job> = new Map();
@@ -215,19 +216,25 @@ export class SchedulerService {
       const channel = (await this.client.channels.fetch(checkinChannelId)) as TextChannel;
       if (!channel || !("send" in channel)) return;
 
-      const mentionsMessage = captainRoleId ? `<@&${captainRoleId}>, le check-in est ouvert !` : "Le check-in est ouvert !";
+      const lang = await getGuildLanguage(tournament.guild_id, tournamentId);
+      const mentionsMessage = captainRoleId
+        ? tBot(lang, "checkin.openMention", { role: `<@&${captainRoleId}>` })
+        : tBot(lang, "checkin.openNoMention");
 
       const checkinEmbed = new EmbedBuilder()
-        .setTitle("✅ Check-in Ouvert !")
+        .setTitle(tBot(lang, "checkin.openTitle"))
         .setDescription(
-          `Le check-in pour le tournoi **${tournament.name || "Actif"}** commence maintenant.\nCapitaines, cliquez sur le bouton ci-dessous pour confirmer votre présence.\n\nFermeture prévue : <t:${Math.floor(new Date(tournament.checkin_end_at).getTime() / 1000)}:R>`,
+          tBot(lang, "checkin.openDescription", {
+            name: tournament.name,
+            closesAt: `<t:${Math.floor(new Date(tournament.checkin_end_at).getTime() / 1000)}:R>`,
+          }),
         )
         .setColor(0x00ff00);
 
       const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
         new ButtonBuilder()
           .setCustomId("btn_checkin")
-          .setLabel("Valider ma présence")
+          .setLabel(tBot(lang, "checkin.validateButton"))
           .setStyle(ButtonStyle.Success)
           .setEmoji("✅"),
       );
@@ -257,7 +264,7 @@ export class SchedulerService {
       // Fetch fresh tournament data
       const { data: tournament } = await supabase
         .from("tournaments")
-        .select("discord_checkin_channel_id")
+        .select("guild_id, discord_checkin_channel_id")
         .eq("id", tournamentId)
         .single();
 
@@ -274,10 +281,9 @@ export class SchedulerService {
       const channel = (await this.client.channels.fetch(tournament.discord_checkin_channel_id)) as TextChannel;
       if (!channel || !("send" in channel)) return;
 
+      const lang = await getGuildLanguage(tournament.guild_id, tournamentId);
       const mentions = teams.map((t) => `<@${t.captain_discord_id}>`).join(" ");
-      await channel.send(
-        `⚠️ **Rappel** : Il reste ${minutesLeft} minutes pour faire votre Check-in !\n${mentions}`,
-      );
+      await channel.send(tBot(lang, "checkin.reminder", { minutes: minutesLeft, mentions }));
     } catch (e) {
       console.error("[Scheduler] Failed sending reminders:", e);
     }
@@ -289,7 +295,7 @@ export class SchedulerService {
 
       const { data: latestTournament } = await supabase
         .from("tournaments")
-        .select("checkin_message_id, discord_checkin_channel_id")
+        .select("guild_id, checkin_message_id, discord_checkin_channel_id")
         .eq("id", tournamentId)
         .single();
 
@@ -303,13 +309,14 @@ export class SchedulerService {
 
       const msg = await channel.messages.fetch(latestTournament.checkin_message_id).catch(() => null);
       if (msg) {
+        const lang = await getGuildLanguage(latestTournament.guild_id, tournamentId);
         const checkinEmbed = new EmbedBuilder()
-          .setTitle("🛑 Check-in Terminé !")
-          .setDescription("Le check-in pour ce tournoi est maintenant clos.")
+          .setTitle(tBot(lang, "checkin.closedTitle"))
+          .setDescription(tBot(lang, "checkin.closedDescription"))
           .setColor(0xff0000);
 
         await msg.edit({
-          content: "Le check-in est terminé.",
+          content: tBot(lang, "checkin.closedContent"),
           embeds: [checkinEmbed],
           components: [],
         });

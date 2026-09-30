@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { supabase } from "../lib/supabase";
 import { getAuthenticatedGuildId } from "../utils/tenant";
+import { LocaleSchema } from "@hub/shared";
 
 export const serverSettingsRouter = Router();
 
 // PUT /api/server-settings — Upsert server settings
 serverSettingsRouter.put("/", async (req, res) => {
   try {
-    const { guild_id, captain_role_id, to_role_id, checkin_channel_id, announcement_channel_id, registration_channel_id } = req.body;
+    const { guild_id, captain_role_id, to_role_id, checkin_channel_id, announcement_channel_id, registration_channel_id, language } = req.body;
     const authGuildId = getAuthenticatedGuildId(req);
 
     if (!authGuildId || guild_id !== authGuildId) {
@@ -18,6 +19,11 @@ serverSettingsRouter.put("/", async (req, res) => {
       return res.status(400).json({ error: "guild_id is required" });
     }
 
+    const requestedLanguage = LocaleSchema.optional().safeParse(language);
+    if (!requestedLanguage.success) {
+      return res.status(400).json({ error: "language must be 'fr' or 'en'" });
+    }
+
     const payload: any = {
       guild_id,
       captain_role_id: captain_role_id || null,
@@ -25,6 +31,7 @@ serverSettingsRouter.put("/", async (req, res) => {
       checkin_channel_id: checkin_channel_id || null,
       announcement_channel_id: announcement_channel_id || null,
       registration_channel_id: registration_channel_id || null,
+      language: requestedLanguage.data ?? 'fr',
       updated_at: new Date().toISOString(),
     };
 
