@@ -79,6 +79,7 @@ Le Bot TournamentHub et l'écosystème de production sont hébergés sur une **m
      - `make build` : compilation globale réussie.
    * 🧪 **Preuve des cas limites** : chaque cas limite annoncé en Phase 2 a un test Vitest qui passe (ou un garde-fou explicite justifié).
    * 🔒 **Auto-contrôle sécurité** : si le diff touche `routes/`, `middleware/`, `supabase/migrations/`, l'auth NextAuth ou des variables d'environnement, dérouler la checklist du skill `security-auditor` sur le diff (ou lancer `/security-audit <chemin>`).
+   * 🌍 **Vérification des traductions** : si le diff ajoute/modifie du texte visible (web ou bot) ou touche `**/i18n/**`, `node .agents/skills/i18n-auditor/scripts/check-i18n.mjs` doit sortir en exit 0 et aucun texte en dur ne doit être introduit (ou `/i18n-audit --diff`).
 5. **Phase 5 : Clôture & Mini-Rapport (PAS D'AUTO-COMMIT)** :
    * `git diff` audité sans console.log ou fichiers parasites. Zéro `any`. **`docs/EDGE_CASES.md` synchronisé**.
    * Interdiction formelle d'exécuter `git commit` automatiquement.
@@ -111,6 +112,15 @@ Skill d'audit dédié à l'évaluation impitoyable de la suite de tests Vitest (
 Skill d'audit dédié à la sécurité applicative, au cloisonnement strict et à la protection des endpoints :
 * **Skill complet** : `.agents/skills/security-auditor/SKILL.md`
 * **Commande rapide** : `/security-audit [--full | <routes> | <migrations>]`
+
+---
+
+## 🌍 i18n Auditor (Audit des Traductions FR / EN)
+
+Skill d'audit de l'internationalisation web & bot (parité des dictionnaires, clés fantômes, textes en dur, formatage des dates, résolution de la langue) :
+* **Skill complet** : `.agents/skills/i18n-auditor/SKILL.md`
+* **Script mécanique** : `node .agents/skills/i18n-auditor/scripts/check-i18n.mjs` (exit 1 si anomalie bloquante)
+* **Commande rapide** : `/i18n-audit [--all | --diff | <chemin>]`
 
 ---
 

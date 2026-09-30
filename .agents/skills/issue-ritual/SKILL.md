@@ -1,6 +1,6 @@
 ---
 name: issue-ritual
-description: Rituel d'exécution obligatoire pour Claude Code et Antigravity lors de la résolution de toute issue sur TournamentHub. Comprend le cadrage Git initial, la présentation d'un plan d'implémentation à valider avant de coder, le TDD strict avec Verify RED, la couverture des cas limites via docs/EDGE_CASES.md, la checklist de sécurité multi-tenant, la loi d'airain anti-bandaids, les règles React 19, le protocole Evidence Before Claims du Makefile, et un bilan final sans commit automatique.
+description: Rituel d'exécution obligatoire pour Claude Code et Antigravity lors de la résolution de toute issue sur TournamentHub. Comprend le cadrage Git initial, la présentation d'un plan d'implémentation à valider avant de coder, le TDD strict avec Verify RED, la couverture des cas limites via docs/EDGE_CASES.md, la checklist de sécurité multi-tenant, la loi d'airain anti-bandaids, les règles React 19, la vérification des traductions FR/EN (i18n-auditor), le protocole Evidence Before Claims du Makefile, et un bilan final sans commit automatique.
 ---
 
 # 🥋 Rituel de Résolution d'Issue - TournamentHub
@@ -25,7 +25,7 @@ Ce rituel structure le travail de l'agent en **5 phases rigoureuses**. Il impose
 └────────────────────┬────────────────────┘
                      ▼
 ┌─────────────────────────────────────────┐
-│ PHASE 4 : 🧪 Porte de Vérification      │ ➜ make test/lint/build + preuve cas limites + auto-contrôle sécu
+│ PHASE 4 : 🧪 Porte de Vérification      │ ➜ make test/lint/build + preuve cas limites + auto-contrôle sécu + i18n
 └────────────────────┬────────────────────┘
                      ▼
 ┌─────────────────────────────────────────┐
@@ -77,6 +77,8 @@ gh issue view <NUMERO> --json number,title,body,labels
    * Repérer les lignes ⚠️ **Non couvert** du périmètre : le ticket ne doit jamais les aggraver, et peut être l'occasion de les corriger (à proposer en Phase 2).
 5. **Surface de Sécurité** :
    * Le ticket touche-t-il une route Express, un middleware, une migration (RLS/RPC), l'auth NextAuth, le proxy `/api/bot/[...path]` ou une variable d'environnement ? Si oui, relire la checklist du skill `.agents/skills/security-auditor/SKILL.md` avant de planifier.
+6. **Surface de Traduction (i18n)** :
+   * Le ticket ajoute-t-il ou modifie-t-il du texte visible (JSX, toast, modale, embed/bouton/modal Discord, réponse éphémère) ? Si oui, repérer les namespaces existants dans `apps/web/src/i18n/locales/{fr,en}.ts` et `apps/bot/src/i18n/locales/{fr,en}.ts` à réutiliser ou étendre.
 
 ---
 
@@ -91,10 +93,11 @@ L'agent doit produire un bilan clair structuré comme suit :
 3. **📂 Fichiers impactés** : Liste ordonnée des fichiers à modifier ou créer.
 4. **🗄️ Impact Base de Données** : Nouvelle migration SQL nécessaire (oui/non) avec schéma succinct.
 5. **⚠️ Cas limites & Pièges identifiés** : IDs `docs/EDGE_CASES.md` impactés, nouveaux cas à consigner, cas obsolètes à purger. Penser systématiquement : valeurs nulles / `undefined`, BYE et nombres impairs, égalités, forfaits, double-clic / appels concurrents, redémarrage du bot en cours d'opération, ressource Discord supprimée.
-6. **🔒 Impact Sécurité** : Routes ou tables touchées, contrôle `verify*Guild` prévu, politiques RLS, validation des entrées, secrets. Écrire *« Aucun impact sécurité »* explicitement si c'est le cas.
-7. **🧪 Stratégie de tests & TDD** : Tests Vitest prévus (`apps/bot/src/__tests__/...`), **un test par cas limite annoncé** au point 5, et les tests de refus (`403` cross-guild, entrée invalide) pour le point 6.
-8. **❓ Questions / Arbitrages éventuels** (si ambiguïté subsistante).
-9. **Demande explicite** : *"Ce plan te convient-il ? Dois-je commencer l'implémentation ?"*
+6. **🌍 Impact Traductions** : Clés FR/EN à créer ou réutiliser (web/bot), ou *« Aucun texte visible »* explicitement.
+7. **🔒 Impact Sécurité** : Routes ou tables touchées, contrôle `verify*Guild` prévu, politiques RLS, validation des entrées, secrets. Écrire *« Aucun impact sécurité »* explicitement si c'est le cas.
+8. **🧪 Stratégie de tests & TDD** : Tests Vitest prévus (`apps/bot/src/__tests__/...`), **un test par cas limite annoncé** au point 5, et les tests de refus (`403` cross-guild, entrée invalide) pour le point 7.
+9. **❓ Questions / Arbitrages éventuels** (si ambiguïté subsistante).
+10. **Demande explicite** : *"Ce plan te convient-il ? Dois-je commencer l'implémentation ?"*
 
 ---
 
@@ -151,6 +154,11 @@ Appliquer les modifications dans l'ordre strict des dépendances du monorepo :
   - **Composant Link** : Utiliser impérativement `<Link href="...">` de `next/link`.
   - **Pas de `setState` synchrone** directement dans le corps d'un `useEffect`.
   - **Pas de `window.alert()` / `window.confirm()`** ➜ utiliser Toasts (`sonner`) et modales.
+- **Traductions FR/EN (web & bot)** :
+  - **Zéro texte visible en dur** : web ➜ `t("namespace.key")` (client, `useTranslation`) ou `t(locale, "namespace.key")` (server component) ; bot ➜ `tBot(lang, "namespace.key")` avec `lang` issu de `getGuildLanguage(guildId, tournamentId)`.
+  - **Toute clé ajoutée l'est dans les deux locales** (`fr.ts` **et** `en.ts`), avec les mêmes placeholders `{param}`.
+  - **Pas de concaténation de phrases** : `t("k", { name })` plutôt que `t("a") + name + t("b")`.
+  - **Dates & nombres** formatés depuis la locale active (`Intl.*`, `dayjs.locale(locale)`), jamais `"fr-FR"` en dur.
 - **Checklist Sécurité (non négociable)** :
   - **Multi-tenant (IDOR)** : toute route de mutation résout le guild authentifié (`getAuthenticatedGuildId`) puis appelle le `verify{Tournament,Phase,Team,Match}Guild` correspondant **avant** toute écriture. Ne jamais faire confiance à un `guild_id` ou un UUID venant du body sans ce contrôle.
   - **Autorisation Discord** : les interactions (boutons, modals, select menus) vérifient que `interaction.user.id` est bien l'acteur autorisé (capitaine concerné, TO). Un `customId` est une entrée utilisateur : re-valider l'état en DB (statut du match, fenêtre d'inscription) au moment du clic.
@@ -185,6 +193,14 @@ Si l'une des commandes échoue, corriger immédiatement à la racine avant de co
 
 **5. Auto-contrôle sécurité** : si le diff touche `apps/bot/src/routes/`, `apps/bot/src/middleware/`, `supabase/migrations/`, `apps/web/src/app/api/` ou des variables d'environnement, relire le diff avec la checklist du skill `security-auditor` (ou lancer `/security-audit <chemin>`) et reporter le résultat dans le bilan. Toute faille 🔴 bloque la clôture.
 
+**6. Vérification des traductions** : si le diff ajoute ou modifie du texte visible (web ou bot) ou touche `**/i18n/**`, exécuter :
+
+```bash
+node .agents/skills/i18n-auditor/scripts/check-i18n.mjs
+```
+
+Le script doit sortir en **exit 0** (parité FR/EN, aucune clé utilisée mais non définie, placeholders identiques), et **aucun fichier du diff** ne doit figurer dans la section « Textes en dur suspects » pour une chaîne introduite par le ticket (faux positifs justifiés dans le bilan). Pour un audit approfondi : `/i18n-audit --diff`.
+
 ---
 
 ## 📦 PHASE 5 : Bilan Final & Clôture (PAS D'AUTO-COMMIT)
@@ -204,7 +220,7 @@ git diff
 Terminer systématiquement par un rapport dense et percutant :
 1. **Fichiers modifiés** : Liste synthétique des fichiers code, schémas et documentation touchés (`docs/EDGE_CASES.md`).
 2. **Preuves terminales validées** : `make test` (X/X passés), `make lint` (0 erreur), `make build` (Succès).
-3. **Cas limites & sécurité** : IDs `docs/EDGE_CASES.md` couverts (ex : `BRK-02 ✅`, `SCR-05 ✅`) et résultat de l'auto-contrôle sécurité (ou « aucun impact »).
+3. **Cas limites, sécurité & i18n** : IDs `docs/EDGE_CASES.md` couverts (ex : `BRK-02 ✅`, `SCR-05 ✅`), résultat de l'auto-contrôle sécurité et de `check-i18n.mjs` (ou « aucun impact »).
 4. **Test local** : Commande pour tester (`make dev`) et URL locale (`http://localhost:3000`).
 5. **Commande de commit & Déploiement Homelab** :
    ```bash
