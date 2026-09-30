@@ -33,6 +33,8 @@ Invocable via `/security-audit` :
 
 ## 🔍 Les 5 Piliers d'Évaluation de Sécurité AppSec
 
+> **Référentiel d'invariants** : la section **🔒 Sécurité Multi-Tenant & Authentification** (`SEC-*`) de `docs/EDGE_CASES.md` liste les garanties que le code doit tenir. Vérifier que chaque `SEC-*` du périmètre est toujours respecté, et consigner dans le registre toute nouvelle faille corrigée (nouvel ID `SEC-NN` + test de refus associé).
+
 ### 1. 🛡️ Cloisonnement Multi-Tenant & Prévention IDOR (Note /20)
 * **Échafaudage de Guilde** : Chaque ressource (`tournaments`, `phases`, `matches`, `teams`, `tournament_registrations`) est-elle strictement liée à un `guild_id` ?
 * **Vérification systématique** : Les endpoints de mutation Express utilisent-ils impérativement `verifyTournamentGuild` ou `verifyPhaseGuild` (`apps/bot/src/utils/tenant.ts`) ?
@@ -68,6 +70,10 @@ Invocable via `/security-audit` :
   * `.env`, `.env.local` et `.pem` sont-ils strictement ignorés dans `.gitignore` ?
 * **Sanitization des Erreurs API** :
   * Les blocs `catch` renvoient-ils des messages génériques aux clients (ex: `"Une erreur interne est survenue"`) au lieu de fuiter la stacktrace, les requêtes SQL internes ou les détails du serveur ?
+* **Sécurité des Endpoints Homelab & Cloudflare Tunnel (`*.hextaz.dev`)** :
+  * L'API Bot (`bot.hextaz.dev`) exige-t-elle le header `Authorization: Bearer ${BOT_API_SECRET}` pour chaque requête venant de Vercel ?
+  * Le récepteur de webhooks (`deploy.hextaz.dev`) vérifie-t-il systématiquement la signature HMAC SHA-256 de GitHub (`X-Hub-Signature-256`) ?
+  * La console de logs (`deploy.hextaz.dev/logs`) est-elle verrouillée par token secret ?
 * **Messages Discord Éphémères** : Les données sensibles ou actions privées sur Discord utilisent-elles `flags: MessageFlags.Ephemeral` (ou `ephemeral: true`) ?
 
 ---

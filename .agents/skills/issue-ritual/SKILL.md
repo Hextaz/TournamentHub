@@ -1,6 +1,6 @@
 ---
 name: issue-ritual
-description: Rituel d'exécution obligatoire pour Claude Code et Antigravity lors de la résolution de toute issue sur TournamentHub. Comprend le cadrage Git initial, la présentation d'un plan d'implémentation à valider avant de coder, le TDD strict avec Verify RED, la loi d'airain anti-bandaids, les règles React 19, le protocole Evidence Before Claims du Makefile, et un bilan final sans commit automatique.
+description: Rituel d'exécution obligatoire pour Claude Code et Antigravity lors de la résolution de toute issue sur TournamentHub. Comprend le cadrage Git initial, la présentation d'un plan d'implémentation à valider avant de coder, le TDD strict avec Verify RED, la couverture des cas limites via docs/EDGE_CASES.md, la checklist de sécurité multi-tenant, la loi d'airain anti-bandaids, les règles React 19, le protocole Evidence Before Claims du Makefile, et un bilan final sans commit automatique.
 ---
 
 # 🥋 Rituel de Résolution d'Issue - TournamentHub
@@ -13,7 +13,7 @@ Ce rituel structure le travail de l'agent en **5 phases rigoureuses**. Il impose
 
 ```
 ┌─────────────────────────────────────────┐
-│ PHASE 1 : Cadrage & Récolte d'Infos    │ ➜ Git context, gh issue view, DB inspection, shared types
+│ PHASE 1 : Cadrage & Récolte d'Infos    │ ➜ Git context, gh issue view, DB inspection, shared types, EDGE_CASES
 └────────────────────┬────────────────────┘
                      ▼
 ┌─────────────────────────────────────────┐
@@ -21,11 +21,11 @@ Ce rituel structure le travail de l'agent en **5 phases rigoureuses**. Il impose
 └────────────────────┬────────────────────┘
                      ▼ (Validation utilisateur)
 ┌─────────────────────────────────────────┐
-│ PHASE 3 : Implémentation & TDD Strict   │ ➜ TDD Verify RED ➜ Anti-Band-Aids ➜ DB ➜ Shared ➜ Bot ➜ Web
+│ PHASE 3 : Implémentation & TDD Strict   │ ➜ TDD Verify RED ➜ Sécurité ➜ Anti-Band-Aids ➜ DB ➜ Shared ➜ Bot ➜ Web
 └────────────────────┬────────────────────┘
                      ▼
 ┌─────────────────────────────────────────┐
-│ PHASE 4 : 🧪 Porte de Vérification      │ ➜ Evidence Before Claims : make test, make lint, make build
+│ PHASE 4 : 🧪 Porte de Vérification      │ ➜ make test/lint/build + preuve cas limites + auto-contrôle sécu
 └────────────────────┬────────────────────┘
                      ▼
 ┌─────────────────────────────────────────┐
@@ -72,6 +72,11 @@ gh issue view <NUMERO> --json number,title,body,labels
    * ⚠️ **Piège classique** : `tournament_status` en DB vaut `'DRAFT'`, `'REGISTRATION'`, `'ACTIVE'`, `'COMPLETED'`, `'ARCHIVED'` (ne JAMAIS chercher `'in_progress'`).
 3. **Vérité Types `@hub/shared`** :
    * Inspecter `packages/shared/src/index.ts` pour identifier les interfaces et schémas Zod à réutiliser ou étendre.
+4. **Registre des Cas Limites (`docs/EDGE_CASES.md`)** :
+   * Consulter systématiquement `docs/EDGE_CASES.md` et relever les IDs du domaine touché (`BRK-*`, `SWS-*`, `SCR-*`, `REG-*`, `SEC-*`, `DISC-*`…).
+   * Repérer les lignes ⚠️ **Non couvert** du périmètre : le ticket ne doit jamais les aggraver, et peut être l'occasion de les corriger (à proposer en Phase 2).
+5. **Surface de Sécurité** :
+   * Le ticket touche-t-il une route Express, un middleware, une migration (RLS/RPC), l'auth NextAuth, le proxy `/api/bot/[...path]` ou une variable d'environnement ? Si oui, relire la checklist du skill `.agents/skills/security-auditor/SKILL.md` avant de planifier.
 
 ---
 
@@ -85,10 +90,11 @@ L'agent doit produire un bilan clair structuré comme suit :
 2. **🎯 Objectif & Périmètre** : Résumé en 2-3 phrases de ce que le ticket accomplit.
 3. **📂 Fichiers impactés** : Liste ordonnée des fichiers à modifier ou créer.
 4. **🗄️ Impact Base de Données** : Nouvelle migration SQL nécessaire (oui/non) avec schéma succinct.
-5. **⚠️ Cas limites & Pièges identifiés** : Gestion des valeurs nulles, `undefined` TypeScript, gestion des BYE, forfaits.
-6. **🧪 Stratégie de tests & TDD** : Tests Vitest prévus (`apps/bot/src/__tests__/...`) et cas d'erreur ciblés.
-7. **❓ Questions / Arbitrages éventuels** (si ambiguïté subsistante).
-8. **Demande explicite** : *"Ce plan te convient-il ? Dois-je commencer l'implémentation ?"*
+5. **⚠️ Cas limites & Pièges identifiés** : IDs `docs/EDGE_CASES.md` impactés, nouveaux cas à consigner, cas obsolètes à purger. Penser systématiquement : valeurs nulles / `undefined`, BYE et nombres impairs, égalités, forfaits, double-clic / appels concurrents, redémarrage du bot en cours d'opération, ressource Discord supprimée.
+6. **🔒 Impact Sécurité** : Routes ou tables touchées, contrôle `verify*Guild` prévu, politiques RLS, validation des entrées, secrets. Écrire *« Aucun impact sécurité »* explicitement si c'est le cas.
+7. **🧪 Stratégie de tests & TDD** : Tests Vitest prévus (`apps/bot/src/__tests__/...`), **un test par cas limite annoncé** au point 5, et les tests de refus (`403` cross-guild, entrée invalide) pour le point 6.
+8. **❓ Questions / Arbitrages éventuels** (si ambiguïté subsistante).
+9. **Demande explicite** : *"Ce plan te convient-il ? Dois-je commencer l'implémentation ?"*
 
 ---
 
@@ -105,6 +111,7 @@ Appliquer les modifications dans l'ordre strict des dépendances du monorepo :
 5. apps/bot/src/commands/   ➜ Commandes Discord (si applicable)
 6. apps/web/src/app/        ➜ Pages Next.js, Layouts, Composants
 7. apps/bot/src/__tests__/  ➜ Tests unitaires Vitest
+8. docs/EDGE_CASES.md        ➜ Synchronisation du registre des cas limites (ajout, promotion ✅, purge)
 ```
 
 ### 3.0 — Discipline d'Ingénierie & TDD Strict (Inspirée de Superpowers)
@@ -115,6 +122,12 @@ Appliquer les modifications dans l'ordre strict des dépendances du monorepo :
   3. *GREEN* : Écrire le code minimal strict pour satisfaire le test.
   4. *VERIFY GREEN* : Ré-exécuter et vérifier que le test passe au vert.
   5. *REFACTOR* : Factoriser et nettoyer en restant vert.
+
+- **Tests des cas limites, pas seulement du happy path** :
+  - Chaque cas limite listé en Phase 2 devient un `it(...)` dédié, nommé d'après son ID (`it("BRK-02: 6 équipes ➜ 2 BYE propagés au R2", ...)`).
+  - Les assertions portent sur le **comportement observable** (matchs insérés, statuts, équipes propagées, code HTTP), pas sur l'appel d'un mock.
+  - Mocker Supabase et Discord à la frontière (`vi.mock("../lib/supabase")`) ; la logique pure (seeding, appariement, classement) doit être extraite et testée sans mock.
+  - Pour tout contrôle d'accès ajouté : tester le chemin **refusé** (`403` cross-guild, capitaine non autorisé) autant que le chemin accepté.
 
 - **Loi d'Airain Anti-Symptôme (Anti-Band-Aids & Anti-`any`)** :
   - **Aucune modification de code sans avoir formellement identifié et prouvé la cause racine.**
@@ -138,8 +151,13 @@ Appliquer les modifications dans l'ordre strict des dépendances du monorepo :
   - **Composant Link** : Utiliser impérativement `<Link href="...">` de `next/link`.
   - **Pas de `setState` synchrone** directement dans le corps d'un `useEffect`.
   - **Pas de `window.alert()` / `window.confirm()`** ➜ utiliser Toasts (`sonner`) et modales.
-- **Sécurité Multi-Tenant** :
-  - Cloisonnement par `guild_id` et validation par `verifyTournamentGuild` ou `verifyPhaseGuild`.
+- **Checklist Sécurité (non négociable)** :
+  - **Multi-tenant (IDOR)** : toute route de mutation résout le guild authentifié (`getAuthenticatedGuildId`) puis appelle le `verify{Tournament,Phase,Team,Match}Guild` correspondant **avant** toute écriture. Ne jamais faire confiance à un `guild_id` ou un UUID venant du body sans ce contrôle.
+  - **Autorisation Discord** : les interactions (boutons, modals, select menus) vérifient que `interaction.user.id` est bien l'acteur autorisé (capitaine concerné, TO). Un `customId` est une entrée utilisateur : re-valider l'état en DB (statut du match, fenêtre d'inscription) au moment du clic.
+  - **Idempotence** : toute action déclenchable deux fois (double-clic, retry réseau, redémarrage PM2) vérifie l'état courant avant de muter (cf. `SCR-05`).
+  - **Supabase** : nouvelle table ➜ `ENABLE ROW LEVEL SECURITY` + politiques d'écriture restreintes ; fonction `SECURITY DEFINER` ➜ `SET search_path = public` ; opérations multi-lignes ➜ RPC transactionnelle.
+  - **Secrets** : aucun secret dans une variable `NEXT_PUBLIC_*`, aucun token dans les logs, `BOT_API_SECRET` uniquement côté serveur.
+  - **Validation d'entrée** : body Express validé par Zod (`middleware/validate.ts`) ; scores bornés, IDs au format UUID.
 
 ---
 
@@ -163,6 +181,10 @@ make build
 
 Si l'une des commandes échoue, corriger immédiatement à la racine avant de continuer.
 
+**4. Preuve des cas limites** : pour chaque cas limite annoncé en Phase 2, citer le test qui le couvre et vérifier qu'il figure dans la sortie de `make test`. Un cas limite sans test doit être justifié par un garde-fou explicite et marqué 🛡️ dans `docs/EDGE_CASES.md`.
+
+**5. Auto-contrôle sécurité** : si le diff touche `apps/bot/src/routes/`, `apps/bot/src/middleware/`, `supabase/migrations/`, `apps/web/src/app/api/` ou des variables d'environnement, relire le diff avec la checklist du skill `security-auditor` (ou lancer `/security-audit <chemin>`) et reporter le résultat dans le bilan. Toute faille 🔴 bloque la clôture.
+
 ---
 
 ## 📦 PHASE 5 : Bilan Final & Clôture (PAS D'AUTO-COMMIT)
@@ -176,16 +198,20 @@ Si l'une des commandes échoue, corriger immédiatement à la racine avant de co
 git status
 git diff
 ```
-* **Nettoyage strict** : Aucun `console.log("DEBUG", ...)` résiduel, aucun fichier temporaire, aucun code mort, aucun `any` introduit.
+* **Nettoyage strict** : Aucun `console.log("DEBUG", ...)` résiduel, aucun fichier temporaire, aucun code mort, aucun `any` introduit, et **`docs/EDGE_CASES.md` synchronisé** (nouveaux cas consignés, lignes promues en ✅, cas obsolètes purgés).
 
 ### 5.2 Mini-Rapport de Clôture (5 lignes max)
 Terminer systématiquement par un rapport dense et percutant :
-1. **Fichiers modifiés** : Liste synthétique des fichiers code et schémas touchés.
+1. **Fichiers modifiés** : Liste synthétique des fichiers code, schémas et documentation touchés (`docs/EDGE_CASES.md`).
 2. **Preuves terminales validées** : `make test` (X/X passés), `make lint` (0 erreur), `make build` (Succès).
-3. **Cas limites vérifiés** : Égalités, forfaits, gestion des BYE, états d'erreur validés.
-4. **Test local** : Commande pour lancer (`make dev`) et URL locale à visiter (`http://localhost:3000/...`).
-5. **Commande de commit suggérée** :
+3. **Cas limites & sécurité** : IDs `docs/EDGE_CASES.md` couverts (ex : `BRK-02 ✅`, `SCR-05 ✅`) et résultat de l'auto-contrôle sécurité (ou « aucun impact »).
+4. **Test local** : Commande pour tester (`make dev`) et URL locale (`http://localhost:3000`).
+5. **Commande de commit & Déploiement Homelab** :
    ```bash
    git add <fichiers concernés>
    git commit -m "<type>(<scope>): <description claire> (#<NUMERO>)"
+   # Le push sur main déclenche automatiquement le déploiement sur Lordi via deploy.hextaz.dev
+   git push origin main
    ```
+   * **Suivi de mise en production** : Vérifier le statut sur Uptime Kuma (`https://status.hextaz.dev`) et inspecter les logs en direct sur `https://deploy.hextaz.dev/logs?app=tournament-bot`.
+

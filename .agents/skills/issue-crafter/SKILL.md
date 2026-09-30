@@ -102,9 +102,16 @@ Description claire du besoin utilisateur ou de la dette technique. Pourquoi ce c
 - `apps/web/src/...`
 
 ## ⚠️ Cas Limites & Sécurité
+- IDs `docs/EDGE_CASES.md` concernés (ex : `BRK-02`, `SCR-05`) et nouveaux cas limites à consigner.
 - Cloisonnement multi-tenant (`guild_id`).
 - Gestion des valeurs nulles / cas d'erreur / forfaits.
 - Rétrocompatibilité avec les tournois en cours.
+
+## 🌐 Synergies Homelab & Services 24/7 (`*.hextaz.dev`)
+- **API Bot & Vercel** (`bot.hextaz.dev`) : Impact sur les routes Express ou les webhooks Vercel.
+- **Uptime Kuma** (`status.hextaz.dev`) : Surveillance `/health` ou heartbeat de background jobs.
+- **MicroBin** (`bin.hextaz.dev`) : Export de brackets, dumps de tournoi ou logs de match.
+- **Memos** (`notes.hextaz.dev`) : Publication de devlog / changelog public du tournoi.
 
 ## ✅ Critères d'Acceptation (Definition of Done)
 - [ ] Critère 1 testable

@@ -54,6 +54,10 @@ Invocable via `/test-audit` avec les options suivantes :
   * Scores négatifs ou impossibles rejetés.
   * Forfait d'une équipe en plein tournoi (qualification automatique de l'adversaire).
 * **Concurrence & Check-in** : Inscription simultanée au-delà du `max_teams`.
+* **Alignement avec le Registre Vivant (`docs/EDGE_CASES.md`)** :
+  * Chaque ligne marquée ✅ **Testé** doit pointer vers un test existant, qui échoue réellement si l'invariant est cassé. Un pointeur mort ou un test creux = 🔴.
+  * Lister les lignes 🛡️ **Garde-fou** et ⚠️ **Non couvert** du périmètre audité comme **déficit de couverture**, classées par criticité (priorité : `BRK`, `SWS`, `SCR`, `SEC`).
+  * Signaler tout cas limite testé mais absent du registre (à consigner) et toute entrée obsolète (à purger).
 
 ### 4. ⏱️ Déterminisme, Isolation & Gestion du Temps (Note /20)
 * **Arrange-Act-Assert (AAA)** : Séparation claire de la mise en place, de l'exécution et des assertions.

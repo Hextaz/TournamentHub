@@ -10,6 +10,7 @@ Discord Bot + Web App for managing E-sport Tournaments (Multi-game).
 - **`apps/web`**: Next.js App Router for frontend UI and admin dashboard (TO Back-office) targeted for Vercel. 
 - **`packages/shared`**: Shared TypeScript types, schemas, and utilities used across both bot and web applications.
 - **`supabase`**: Contains the PostgreSQL configuration, migrations, and schema for local and remote deployment.
+- **`docs/EDGE_CASES.md`**: Living registry of edge cases, multi-tenant security invariants and resilience rules (with test coverage status).
 
 ---
 

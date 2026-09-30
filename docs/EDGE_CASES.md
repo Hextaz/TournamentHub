@@ -1,0 +1,125 @@
+# 🛡️ Registre des Cas Limites & Invariants — TournamentHub
+
+Ce document consigne l'ensemble des **cas limites**, **invariants de sécurité multi-tenant** et **règles de résilience** de TournamentHub (Bot Discord `@hub/bot`, Web `@hub/web`, base Supabase). Tout nouveau cas limite découvert ou corrigé doit être ajouté à ce registre et être couvert par un test de non-régression Vitest (`apps/bot/src/__tests__/`).
+
+---
+
+## 🧭 Règle d'Or de l'Ingénierie
+> **Un cas limite n'est considéré comme maîtrisé que s'il est validé par un test automatisé exécutable (`make test`) ou par un garde-fou défensif explicite (contrainte SQL, guard de route, check de statut).**
+
+### Légende de la colonne « Couverture »
+| Statut | Signification |
+| :--- | :--- |
+| ✅ **Testé** | Couvert par un test Vitest qui échoue si l'invariant est cassé. |
+| 🛡️ **Garde-fou** | Protégé par du code défensif ou une contrainte DB, **sans test automatisé**. Candidat prioritaire au TDD. |
+| ⚠️ **Non couvert** | Comportement actuel fragile ou incorrect. Doit faire l'objet d'une issue (`/create-issue`). |
+
+### Convention de maintenance
+* **Identifiants stables** : `DOMAINE-NN` (ex : `BRK-03`). Ne jamais réutiliser l'ID d'une entrée purgée.
+* **Ajouter** : tout cas limite introduit ou corrigé par un diff ➜ nouvelle ligne + test référencé.
+* **Promouvoir** : quand un test est écrit pour une ligne 🛡️/⚠️, passer la ligne en ✅ et pointer le fichier de test.
+* **Purger** : si une règle métier disparaît ou est refondue, supprimer ou réécrire l'entrée dans le même diff.
+
+---
+
+## 1. 🏆 Génération de Brackets (`apps/bot/src/services/BracketGeneratorService.ts`)
+
+| ID | Fonction | Scénario | Comportement Attendu | Couverture |
+| :--- | :--- | :--- | :--- | :--- |
+| **BRK-01** | `getStandardSeeds` | Bracket de taille 4, 8 ou 16. | Ordre de seeding standard : seed 1 et seed 2 ne peuvent se croiser qu'en finale ; chaque paire du R1 somme à `bracketSize + 1`. | ✅ `__tests__/BracketGeneratorService.test.ts` |
+| **BRK-02** | `generateBracket` | Nombre d'équipes qui n'est pas une puissance de 2 (ex : 6 équipes). | Taille arrondie à la puissance de 2 supérieure (8). Les emplacements vides deviennent des BYE auto-résolus : l'équipe présente avance au tour suivant avec un score `1-0`. | 🛡️ Cascade de propagation BYE |
+| **BRK-03** | `generateBracket` | Match dont les **deux** emplacements sont vides après propagation des BYE. | Match « mort » marqué `COMPLETED` avec `0-0`, sans propager d'équipe `null` au tour suivant. | 🛡️ |
+| **BRK-04** | `generateBracket` | Deux `phase_teams` partagent le même seed (en valeur absolue, ex : `3` et `-3`). | Rejet avec `Duplicate seed … Each team must have a unique seed.` avant toute insertion. Doublé par la contrainte SQL `unique_seed_per_phase`. | 🛡️ |
+| **BRK-05** | `generateBracket` | Des matchs existent déjà pour la phase. | Rejet `Matches already exist for phase …` : aucune double génération d'arbre. | 🛡️ |
+| **BRK-06** | `generateBracket` (DOUBLE_ELIM) | Seed négatif (équipe qui démarre en Losers Bracket). | Placée directement en LB Round 11, jamais en Winners Round 1. En SINGLE_ELIM, un seed négatif est traité comme un seed positif. | 🛡️ |
+| **BRK-07** | `generateBracket` (DOUBLE_ELIM) | Numérotation des rounds. | WB : `1..log2(n)`. LB : `11+` (majeurs `10+2r-2`, mineurs `10+2r-3`). Grande Finale : `21`. Toute UI ou tout service qui trie par `round_number` doit respecter ces plages. | 🛡️ |
+
+---
+
+## 2. 🇨🇭 Rondes Suisses & Poules (`SwissGeneratorService.ts`, `RoundRobinGeneratorService.ts`)
+
+| ID | Fonction | Scénario | Comportement Attendu | Couverture |
+| :--- | :--- | :--- | :--- | :--- |
+| **SWS-01** | `generateFirstRound` | Moins de 2 équipes dans la phase. | Rejet `Il faut au moins 2 équipes pour générer une ronde suisse.` | 🛡️ |
+| **SWS-02** | `generateFirstRound` | Nombre impair d'équipes. | L'équipe au seed le plus faible reçoit un match `BYE` (`team2_id = null`, score `1-0`), compté comme une victoire. | 🛡️ |
+| **SWS-03** | `generateNextRound` | Nombre impair d'équipes lors d'une ronde suivante. | Le BYE va à l'équipe **la moins bien classée n'ayant jamais eu de BYE**. Repli : la dernière équipe si toutes en ont déjà eu un. | 🛡️ |
+| **SWS-04** | `generateNextRound` | Aucun adversaire disponible que l'équipe n'a pas déjà affronté. | Repli : appariement avec l'équipe non appariée la plus proche au classement, même si c'est une revanche. La génération n'est jamais bloquée. | 🛡️ |
+| **SWS-05** | `calculateSwissStandings` | Victoire via BYE en Suisse. | Le BYE rapporte **3 points en dur**, sans lire `phase.settings.points_win`. | ⚠️ Incohérent avec le barème configurable des poules |
+| **RR-01** | `generateGroups` | Moins d'équipes que de groupes demandés. | Rejet explicite. Attention : les anciens `groups` de la phase sont **supprimés avant** la validation. | ⚠️ Suppression non atomique |
+| **RR-02** | `generateGroups` | Groupe au nombre impair d'équipes. | Ajout d'un slot virtuel `"BYE"`. Le match contre le BYE est inséré en `COMPLETED` avec `1-0` (et non `BYE`) pour être compté par le classement. | 🛡️ |
+| **RR-03** | `generateGroups` | Distribution des équipes dans plusieurs groupes. | Répartition en serpentin (snake seeding) : `G1, G2, …, Gn, Gn, …, G1`. | 🛡️ |
+| **LB-01** | `calculateGroupStandings` | Appels concurrents pour le même groupe (deux scores validés en même temps). | Mutex par `groupId` : les recalculs sont sérialisés, pas d'écrasement concurrent de `phase_teams`. | 🛡️ |
+| **LB-02** | `calculateGroupStandings` | JSON `phase.settings` malformé. | Log d'erreur et barème par défaut (`3/1/0/0`) : pas de crash. | 🛡️ |
+
+---
+
+## 3. ⚔️ Scores & Progression (`ScoreService.ts`, `routes/MatchRouter.ts`)
+
+| ID | Composant | Scénario | Comportement Attendu | Couverture |
+| :--- | :--- | :--- | :--- | :--- |
+| **SCR-01** | `isValidScore` / `force-score` | Score négatif, décimal, non numérique ou > 99. | Rejet (réponse éphémère côté Discord, `400` côté API). Doublé par la contrainte SQL `team1_score >= 0 AND team2_score >= 0`. | 🛡️ |
+| **SCR-02** | `handleSelectMenu` | Un utilisateur qui n'est capitaine d'aucune des deux équipes tente de déclarer un score. | Rejet `Vous n'êtes pas capitaine dans ce match.` | 🛡️ |
+| **SCR-03** | `handleModalSubmit` | Déclaration sur un match qui n'est ni `PENDING` ni `IN_PROGRESS`. | Rejet `Ce match n'est plus en attente de résultat.` | 🛡️ |
+| **SCR-04** | `handleButton` | Un joueur autre que le capitaine adverse clique sur « Valider » ou « Contester ». | Rejet `Seul le capitaine adverse peut valider ou contester ce score.` | 🛡️ |
+| **SCR-05** | `handleButton` | Double-clic sur « Valider », ou validation après une contestation. | **Attendu** : refus si le statut n'est plus `WAITING_VALIDATION`. **Actuel** : aucun contrôle de statut et boutons jamais retirés du message d'origine, donc `progressTeams` peut s'exécuter deux fois (en SWISS : ronde suivante générée en double). | ⚠️ [#45](https://github.com/Hextaz/TournamentHub/issues/45) |
+| **SCR-06** | `progressTeams` | Égalité de score dans un bracket à élimination. | Aucune progression automatique. Ping des TO « MATCH NUL » pour arbitrage manuel. | 🛡️ |
+| **SCR-07** | `assignTeamToNextMatch` | Deux matchs parents se terminent simultanément et visent le même match suivant. | Assignation atomique via la RPC `assign_team_to_match`. Le repli non atomique en cas d'erreur RPC reste une fenêtre de course. | 🛡️ RPC / ⚠️ repli |
+| **SCR-08** | `progressTeams` (SWISS) | Dernier match d'une ronde suisse validé. | Génération automatique de la ronde suivante tant que `round < swiss_rounds_count` (3 par défaut), puis annonce de fin de phase. | 🛡️ |
+| **SCR-09** | `PhaseRouter` (placement) | Modification du seeding alors que des matchs réels ont un score ou sont `COMPLETED`. | Rejet `400`. Les matchs BYE (un seul `team_id`) sont ignorés dans ce contrôle. | 🛡️ |
+
+---
+
+## 4. 📝 Inscriptions & Check-in (`RegistrationService.ts`, `SchedulerService.ts`)
+
+| ID | Composant | Scénario | Comportement Attendu | Couverture |
+| :--- | :--- | :--- | :--- | :--- |
+| **REG-01** | `handleRegisterButton` / `handleMainModalSubmit` | Inscription après l'ouverture du check-in, après la date de début, ou avec un statut `ACTIVE`, `COMPLETED` ou `ARCHIVED`. | Rejet `Les inscriptions sont terminées`. Le contrôle est **refait à la soumission** du modal. | 🛡️ |
+| **REG-02** | `parsePlayerInput` | Code ami hors format `SW-XXXX-XXXX-XXXX` ou pseudo vide. | Rejet ligne par ligne avec le numéro du joueur fautif. Le code ami est normalisé en majuscules. | 🛡️ |
+| **REG-03** | `finalizeRegistration` | Un capitaine tente d'inscrire une 2ᵉ équipe au même tournoi. | Rejet côté service (count) **et** côté DB (contrainte `unique_captain_per_tournament`, code `23505`). | 🛡️ |
+| **REG-04** | `finalizeRegistration` | Session d'inscription expirée (> 15 min) ou bot redémarré entre les deux modals. | Message `Session d'inscription introuvable ou expirée`. Le cache est en mémoire : un redémarrage PM2 perd les sessions en cours. | 🛡️ |
+| **REG-05** | `finalizeRegistration` | Double-clic sur « Terminer l'inscription ». | Le cache est vidé **avant** l'insertion : le second clic tombe sur la session expirée (REG-04). | 🛡️ |
+| **REG-06** | `finalizeRegistration` | Échec d'insertion d'un `team_member`. | L'équipe est créée, l'erreur est listée et le capitaine est averti de contacter un TO. L'opération **n'est pas transactionnelle**. | ⚠️ Roster partiel possible |
+| **CHK-01** | `SchedulerService.init` / `catchUpCheckin` | Le bot redémarre pendant une fenêtre de check-in ouverte. | Rattrapage : si `checkin_message_id` existe, on ne republie rien. Sinon, on scanne les 10 derniers messages du salon à la recherche d'un bouton `btn_checkin` avant de republier. | 🛡️ |
+| **CHK-02** | `scheduleTournament` | Fenêtre de check-in de moins de 30 min (ou de moins de 10 min). | Les rappels à J-30 min (ou J-10 min) ne sont pas programmés. | 🛡️ |
+| **CHK-03** | `scheduleTournament` | Replanification d'un tournoi (dates modifiées). | `cancelTournamentJobs` est appelé d'abord : aucun job en double. | 🛡️ |
+| **CHK-04** | `handleReminders` | Toutes les équipes sont déjà check-in. | Aucun message de rappel envoyé. | 🛡️ |
+
+---
+
+## 5. 🔒 Sécurité Multi-Tenant & Authentification (`middleware/auth.ts`, `utils/tenant.ts`, `apps/web/src/app/api/bot/`)
+
+| ID | Composant | Scénario | Comportement Attendu | Couverture |
+| :--- | :--- | :--- | :--- | :--- |
+| **SEC-01** | `verify{Tournament,Phase,Team,Match}Guild` | Un admin du serveur A cible une ressource du serveur B via son UUID (IDOR). | `403 Accès refusé`. Toute route de mutation **doit** appeler le `verify*Guild` correspondant avant d'écrire. | 🛡️ |
+| **SEC-02** | `authMiddleware` | En-tête `Authorization` absent ou mal formé. | `401`. Seule `/health` est exemptée. | 🛡️ |
+| **SEC-03** | `authMiddleware` | `SUPABASE_JWT_SECRET` absent et token différent de `BOT_API_SECRET`. | `500 Server auth misconfiguration` (fail-closed, jamais fail-open). | 🛡️ |
+| **SEC-04** | `requireGuildAdmin` | Utilisateur absent du serveur, ou sans Owner, Administrator, ManageGuild ni rôle TO. | `403`. Le résultat négatif est aussi mis en cache. | 🛡️ |
+| **SEC-05** | `requireGuildAdmin` (cache) | Un admin perd ses droits Discord. | Il garde l'accès jusqu'à **30 s** (TTL de `permCache`). Délai accepté, à ne pas allonger. | 🛡️ |
+| **SEC-06** | Proxy `/api/bot/[...path]` | Requête sans session NextAuth. | `401` avant tout appel au bot. `X-Discord-User-Id` est dérivé de la session serveur, jamais du client. | 🛡️ |
+| **SEC-07** | RLS Supabase | Écriture directe via la clé anon sur `tournaments`, `phases`, `matches`… | Refusée : les politiques d'écriture exigent `is_admin_of_tournament` ou `service_role`. La lecture publique est volontaire. | 🛡️ |
+| **SEC-08** | `ServerSettingsRouter` | Modification des paramètres d'un autre serveur. | `403` si le `guild_id` du body diffère du guild authentifié. | 🛡️ |
+
+---
+
+## 6. 🌐 Fiabilité Discord & Cycle de Vie (`LifecycleService.ts`, `ArchiveService.ts`)
+
+| ID | Composant | Scénario | Comportement Attendu | Couverture |
+| :--- | :--- | :--- | :--- | :--- |
+| **DISC-01** | Interactions (boutons, modals) | Traitement de plus de 3 s (requêtes Supabase, génération). | `deferReply` / `deferUpdate` appelé avant tout I/O lent. Une validation locale synchrone (ex : format du score) peut répondre directement. | 🛡️ |
+| **DISC-02** | `launchTournament` | Échec de synchronisation d'une phase (salon, permissions). | L'erreur est loggée et les autres phases continuent. Le statut `ACTIVE` n'est posé **qu'après** la création des ressources Discord. | 🛡️ |
+| **DISC-03** | `closeTournament` | Serveur ou catégorie Discord introuvable (supprimé manuellement). | Warning loggé. Le statut passe quand même à `COMPLETED` en DB. | 🛡️ |
+| **DISC-04** | `syncPhaseChannels` | Une équipe est retirée d'une phase déjà synchronisée. | Les overwrites membres obsolètes (`type === 1`) sont supprimés : un ex-capitaine perd l'accès au salon. | 🛡️ |
+| **DISC-05** | `backgroundDiscordCleanup` | Retrait du rôle Capitaine sur un grand nombre de membres. | Traitement par lots de 5 avec 100 ms de pause (rate limit Discord). Un échec individuel est loggé sans interrompre le lot. | 🛡️ |
+
+---
+
+## 📌 Dette de Couverture Prioritaire
+
+Les lignes ⚠️ ci-dessus sont des **bugs latents connus**. Ordre de traitement recommandé :
+1. **SCR-05** ([#45](https://github.com/Hextaz/TournamentHub/issues/45)) : double validation de score ➜ double progression, ronde suisse générée en double.
+2. **RR-01** : suppression des groupes avant validation ➜ perte de données sur une entrée invalide.
+3. **REG-06** : roster partiel ➜ passer par une RPC transactionnelle.
+4. **SWS-05** : barème BYE suisse codé en dur.
+5. **SCR-07** : repli non atomique de `assign_team_to_match`.
+
+Les lignes 🛡️ des domaines **BRK**, **SWS** et **SCR** sont les premières candidates au TDD (`/test-audit`).
