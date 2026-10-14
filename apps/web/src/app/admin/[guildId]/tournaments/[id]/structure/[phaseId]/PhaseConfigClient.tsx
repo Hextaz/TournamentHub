@@ -362,29 +362,29 @@ export function PhaseConfigClient({
                       <input 
                         type="number" 
                         name="settings.points_win" 
-                        value={formData.settings.points_win ?? 3} 
+                        value={formData.settings.points_win ?? GROUP_POINTS_DEFAULTS.points_win} 
                         onChange={handleChange}
                         onBlur={() => handlePointsBlur("points_win")}
                         className="w-full border border-slate-800 rounded-lg px-3 py-2 text-white bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none font-medium" 
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">{t("stages.table.draws")}</label>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">{t("adminPhaseConfig.draw")}</label>
                       <input 
                         type="number" 
                         name="settings.points_draw" 
-                        value={formData.settings.points_draw ?? 1} 
+                        value={formData.settings.points_draw ?? GROUP_POINTS_DEFAULTS.points_draw} 
                         onChange={handleChange}
                         onBlur={() => handlePointsBlur("points_draw")}
                         className="w-full border border-slate-800 rounded-lg px-3 py-2 text-white bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none font-medium" 
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-400 mb-1">{t("stages.table.losses")}</label>
+                      <label className="block text-xs font-bold text-slate-400 mb-1">{t("adminPhaseConfig.loss")}</label>
                       <input 
                         type="number" 
                         name="settings.points_loss" 
-                        value={formData.settings.points_loss ?? 0} 
+                        value={formData.settings.points_loss ?? GROUP_POINTS_DEFAULTS.points_loss} 
                         onChange={handleChange}
                         onBlur={() => handlePointsBlur("points_loss")}
                         className="w-full border border-slate-800 rounded-lg px-3 py-2 text-white bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none font-medium" 
@@ -398,7 +398,7 @@ export function PhaseConfigClient({
                  <div className="flex items-start gap-3 mb-4">
                    <input type="checkbox" checked readOnly className="mt-1 accent-indigo-600 w-4 h-4 rounded bg-slate-950 border-slate-800" />
                    <div>
-                     <span className="font-extrabold text-white text-sm block">{t("stages.table.forfeits")}</span>
+                     <span className="font-extrabold text-white text-sm block">{t("adminPhaseConfig.forfeit")}</span>
                      <p className="text-sm text-slate-400 mt-1 leading-relaxed">{t("adminPhaseConfig.forfeitDesc")}</p>
                    </div>
                  </div>
@@ -406,7 +406,7 @@ export function PhaseConfigClient({
                     <input 
                       type="number" 
                       name="settings.points_forfeit" 
-                      value={formData.settings.points_forfeit ?? 0} 
+                      value={formData.settings.points_forfeit ?? GROUP_POINTS_DEFAULTS.points_forfeit} 
                       onChange={handleChange}
                       onBlur={() => handlePointsBlur("points_forfeit")}
                       className="w-full border border-slate-800 rounded-lg px-3 py-2 text-white bg-slate-950 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 focus:outline-none font-medium" 
