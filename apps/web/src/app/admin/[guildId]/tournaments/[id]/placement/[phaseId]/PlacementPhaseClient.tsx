@@ -17,7 +17,10 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useToast } from "@/context/ToastContext";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 // Helper for bracket visually formatting the first round
 const BRACKET_PAIRS: Record<number, number[][]> = {
@@ -113,7 +116,10 @@ export function PlacementPhaseClient({
     return initial;
   });
 
+  const { toast } = useToast();
   const [isSaving, setIsSaving] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [targetSlot, setTargetSlot] = useState<number | null>(null); // 1-indexed
   const [searchQuery, setSearchQuery] = useState("");
@@ -136,11 +142,11 @@ export function PlacementPhaseClient({
     setModalOpen(true);
   };
   const handleAutoFill = () => {
-    let unplacedTeams = availableTeams.filter(
+    const unplacedTeams = availableTeams.filter(
       (t) => !seeds.some((s) => s?.id === t.id),
     );
     if (unplacedTeams.length === 0) {
-      alert(t("adminPlacement.noTeamsAvailable"));
+      toast.info(t("adminPlacement.noTeamsAvailable"));
       return;
     }
     const newSeeds = [...seeds];
@@ -150,6 +156,7 @@ export function PlacementPhaseClient({
       }
     }
     setSeeds(newSeeds);
+    toast.success(t("adminPlacement.autoFillSuccess"));
   };
   const handleRemoveFromSlot = (index: number) => {
     const newSeeds = [...seeds];
@@ -157,9 +164,9 @@ export function PlacementPhaseClient({
     setSeeds(newSeeds);
   };
   const handleResetSeeding = () => {
-    if (confirm(t("adminPlacement.resetConfirm"))) {
-      setSeeds(new Array(totalSlots).fill(null));
-    }
+    setSeeds(new Array(totalSlots).fill(null));
+    setShowResetModal(false);
+    toast.success(t("adminPlacement.resetSuccess"));
   };
 
   const handleConfirmSelection = () => {
@@ -176,12 +183,6 @@ export function PlacementPhaseClient({
   };
 
   const handleSaveSeeding = async () => {
-    if (
-      !confirm(
-        t("adminPlacement.saveConfirm"),
-      )
-    )
-      return;
     setIsSaving(true);
 
     // Construct payload
@@ -204,12 +205,15 @@ export function PlacementPhaseClient({
         },
       );
 
-      if (!res.ok) { let b={error: "Erreur de sauvegarde"}; try { b = await res.json(); } catch(e){} throw new Error(b.error || "Erreur de sauvegarde"); }
-      alert(t("adminPlacement.saveSuccess"));
+      if (!res.ok) {
+        throw new Error((await readApiError(res)) ?? t("adminPlacement.saveFailed"));
+      }
+      setShowSaveModal(false);
+      toast.success(t("adminPlacement.saveSuccess"));
       router.refresh();
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      alert(t("feedback.genericError", { message: e.message || String(e) }));
+      toast.error(t("feedback.genericError", { message: getErrorMessage(e) ?? t("common.unknown") }));
     } finally {
       setIsSaving(false);
     }
@@ -820,17 +824,17 @@ export function PlacementPhaseClient({
               {t("adminPlacement.autoFill")}
             </button>
             <button
-              onClick={handleResetSeeding}
+              onClick={() => setShowResetModal(true)}
               disabled={seeds.every((s) => s === null)}
-              className="w-full h-10 bg-slate-800/80 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 rounded-lg font-semibold border border-slate-700 hover:border-rose-900/50 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:hover:bg-slate-800/80 disabled:hover:text-slate-400 disabled:hover:border-slate-700"
+              className="w-full h-10 bg-slate-800/80 hover:bg-rose-950/40 text-slate-400 hover:text-rose-400 rounded-lg font-semibold border border-slate-700 hover:border-rose-900/50 transition-all flex items-center justify-center gap-2 disabled:opacity-30 disabled:hover:bg-slate-800/80 disabled:hover:text-slate-400 disabled:hover:border-slate-700 cursor-pointer"
             >
               <RotateCcw className="w-4 h-4" />
               {t("adminPlacement.resetSeeding")}
             </button>
             <button
-              onClick={handleSaveSeeding}
+              onClick={() => setShowSaveModal(true)}
               disabled={isSaving}
-              className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg font-bold shadow-lg shadow-indigo-500/15 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full h-12 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg font-bold shadow-lg shadow-indigo-500/15 transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {isSaving ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -987,14 +991,14 @@ export function PlacementPhaseClient({
             <div className="px-6 py-4 bg-slate-900 flex items-center justify-between shrink-0 border-t border-slate-800">
               <button
                 onClick={() => setModalOpen(false)}
-                className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold shadow-md transition-colors flex items-center gap-2 border border-slate-700"
+                className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg font-bold shadow-md transition-colors flex items-center gap-2 border border-slate-700 cursor-pointer"
               >
                 {t("common.cancel")}
               </button>
               <button
                 onClick={handleConfirmSelection}
                 disabled={!selectedTeamId}
-                className="px-8 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg font-bold shadow-lg transition-all"
+                className="px-8 py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed text-white rounded-lg font-bold shadow-lg transition-all cursor-pointer"
               >
                 {t("common.save")}
               </button>
@@ -1002,6 +1006,31 @@ export function PlacementPhaseClient({
           </div>
         </div>
       )}
+
+      {/* Modal Réinitialisation Seeding */}
+      <ConfirmModal
+        isOpen={showResetModal}
+        onClose={() => setShowResetModal(false)}
+        onConfirm={handleResetSeeding}
+        title={t("adminPlacement.resetSeeding")}
+        description={t("adminPlacement.resetConfirm")}
+        confirmText={t("adminPlacement.resetButton")}
+        variant="danger"
+        icon={RotateCcw}
+      />
+
+      {/* Modal Sauvegarde Seeding */}
+      <ConfirmModal
+        isOpen={showSaveModal}
+        onClose={() => setShowSaveModal(false)}
+        onConfirm={handleSaveSeeding}
+        title={t("adminPlacement.saveSeeding")}
+        description={t("adminPlacement.saveConfirm")}
+        confirmText={t("adminPlacement.saveAndGenerate")}
+        variant="primary"
+        icon={Save}
+        isLoading={isSaving}
+      />
       </div>
     </>
   );

@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import { Save, Loader2, RefreshCw } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 export default function SettingsPage({
   params,
@@ -112,14 +113,13 @@ export default function SettingsPage({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
       setMessage({ type: "success", text: t("adminSettings.savedSuccess") });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setMessage({ type: "error", text: t("adminSettings.saveError", { message: err.message }) });
+      setMessage({ type: "error", text: t("adminSettings.saveError", { message: getErrorMessage(err) ?? t("common.unknown") }) });
     }
     setSaving(false);
   };

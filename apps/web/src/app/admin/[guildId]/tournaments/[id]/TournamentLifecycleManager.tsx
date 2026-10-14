@@ -4,7 +4,10 @@ import { useState } from "react";
 import { botApiFetch } from '@/utils/api';
 import { useRouter } from "next/navigation";
 import { Rocket, Loader2, AlertOctagon } from "lucide-react";
+import { useToast } from "@/context/ToastContext";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 interface Props {
   tournamentId: string;
@@ -14,13 +17,14 @@ interface Props {
 
 export function TournamentLifecycleManager({ tournamentId, guildId, status }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const { t } = useTranslation();
   const [loadingLaunch, setLoadingLaunch] = useState(false);
   const [loadingClose, setLoadingClose] = useState(false);
+  const [showLaunchModal, setShowLaunchModal] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
 
   const handleLaunch = async () => {
-    if (!window.confirm(t("admin.launchConfirm"))) return;
-
     setLoadingLaunch(true);
     try {
       const res = await botApiFetch(`/api/tournaments/${tournamentId}/launch`, {
@@ -30,26 +34,21 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
       });
 
       if (!res.ok) {
-        const errorData = await res.text();
-        throw new Error(errorData || "Erreur de communication avec le bot Discord");
+        throw new Error((await readApiError(res)) ?? t("admin.botCommunicationError"));
       }
 
+      toast.success(t("admin.launchedSuccess"));
+      setShowLaunchModal(false);
       router.refresh();
-    } catch(err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(t("feedback.launchFailed", { message: err.message }));
+      toast.error(t("feedback.launchFailed", { message: getErrorMessage(err) ?? t("admin.botCommunicationError") }));
     } finally {
       setLoadingLaunch(false);
     }
   };
 
   const handleClose = async () => {
-    const confirmName = window.prompt(t("admin.closePrompt"));
-    if (confirmName !== "CLOTURER") {
-      alert(t("admin.cancelNotice"));
-      return;
-    }
-
     setLoadingClose(true);
     try {
       const res = await botApiFetch(`/api/tournaments/${tournamentId}/close`, {
@@ -59,13 +58,15 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
       });
 
       if (!res.ok) {
-        console.warn("Discord Bot returned non-ok, finishing closure locally.");
+        throw new Error((await readApiError(res)) ?? t("admin.botCommunicationError"));
       }
 
+      toast.success(t("admin.closedSuccess"));
+      setShowCloseModal(false);
       router.refresh();
-    } catch(err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(t("feedback.closeFailed", { message: err.message }));
+      toast.error(t("feedback.closeFailed", { message: getErrorMessage(err) ?? t("admin.botCommunicationError") }));
     } finally {
       setLoadingClose(false);
     }
@@ -80,36 +81,65 @@ export function TournamentLifecycleManager({ tournamentId, guildId, status }: Pr
   }
 
   return (
-    <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
-      <div>
-        <h2 className="text-xl font-bold text-white mb-1">{t("admin.lifecycleTitle")}</h2>
-        <p className="text-slate-400 text-sm">{t("admin.lifecycleDesc")}</p>
+    <>
+      <div className="bg-slate-900 border border-slate-800 p-6 rounded-xl shadow-lg mb-6 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+          <h2 className="text-xl font-bold text-white mb-1">{t("admin.lifecycleTitle")}</h2>
+          <p className="text-slate-400 text-sm">{t("admin.lifecycleDesc")}</p>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {status !== "ACTIVE" && (
+            <button
+              onClick={() => setShowLaunchModal(true)}
+              disabled={loadingLaunch || loadingClose}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-lg transition-colors cursor-pointer"
+            >
+              {loadingLaunch ? <Loader2 className="w-5 h-5 animate-spin" /> : <Rocket className="w-5 h-5" />}
+              {t("admin.launchTournament")}
+            </button>
+          )}
+
+          {status === "ACTIVE" && (
+            <button
+              onClick={() => setShowCloseModal(true)}
+              disabled={loadingLaunch || loadingClose}
+              className="flex items-center gap-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-lg transition-colors cursor-pointer"
+            >
+              {loadingClose ? <Loader2 className="w-5 h-5 animate-spin" /> : <AlertOctagon className="w-5 h-5" />}
+              {t("admin.closeTournament")}
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center gap-3">
-        {status !== "ACTIVE" && (
-          <button
-            onClick={handleLaunch}
-            disabled={loadingLaunch || loadingClose}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-lg transition-colors"
-          >
-            {loadingLaunch ? <Loader2 className="w-5 h-5 animate-spin" /> : <Rocket className="w-5 h-5" />}
-            {t("admin.launchTournament")}
-          </button>
-        )}
+      {/* Modal Lancement */}
+      <ConfirmModal
+        isOpen={showLaunchModal}
+        onClose={() => setShowLaunchModal(false)}
+        onConfirm={handleLaunch}
+        title={t("admin.launchTournament")}
+        description={t("admin.launchConfirm")}
+        confirmText={t("admin.launchTournament")}
+        variant="primary"
+        icon={Rocket}
+        isLoading={loadingLaunch}
+      />
 
-        {status === "ACTIVE" && (
-          <button
-            onClick={handleClose}
-            disabled={loadingLaunch || loadingClose}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white font-bold px-6 py-2.5 rounded-lg transition-colors"
-          >
-            {loadingClose ? <Loader2 className="w-5 h-5 animate-spin" /> : <AlertOctagon className="w-5 h-5" />}
-            {t("admin.closeTournament")}
-          </button>
-        )}
-      </div>
-    </div>
+      {/* Modal Clôture */}
+      <ConfirmModal
+        isOpen={showCloseModal}
+        onClose={() => setShowCloseModal(false)}
+        onConfirm={handleClose}
+        title={t("admin.closeTournament")}
+        description={t("admin.closeConfirm")}
+        confirmText={t("admin.closeConfirmButton")}
+        confirmPhrase={t("admin.closeConfirmPhrase")}
+        variant="danger"
+        icon={AlertOctagon}
+        isLoading={loadingClose}
+      />
+    </>
   );
 }
 

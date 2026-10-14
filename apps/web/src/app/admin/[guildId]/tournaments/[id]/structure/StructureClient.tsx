@@ -5,7 +5,10 @@ import { getBotApiUrl, botApiFetch } from '@/utils/api';
 import { useRouter } from "next/navigation";
 import { CopyX, GitMerge, LayoutGrid, Network, Trash2, LayoutList, MoreVertical, Search, Users, Plus } from "lucide-react";
 import Link from "next/link";
+import { useToast } from "@/context/ToastContext";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 export function StructureClient({
   tournamentId,
@@ -17,8 +20,10 @@ export function StructureClient({
   initialPhases: any[]
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const { t } = useTranslation();
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
+  const [phaseToDelete, setPhaseToDelete] = useState<{ id: string; name: string } | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState<string | null>(null);
 
   const toggleDropdown = (id: string) => {
@@ -47,15 +52,17 @@ export function StructureClient({
 
       if (!res.ok) throw new Error("Creation error");
       const newPhase = await res.json();
+      toast.success(t("adminStructure.createdSuccess"));
       router.push(`/admin/${guildId}/tournaments/${tournamentId}/structure/${newPhase.id}`);
-    } catch(e) {
+    } catch (e: unknown) {
       console.error(e);
-      alert(t("feedback.createPhaseFailed"));
+      toast.error(t("feedback.createPhaseFailed"));
     }
   };
 
-  const deletePhase = async (id: string) => {
-    if (!confirm(t("adminStructure.deleteConfirm"))) return;
+  const deletePhase = async () => {
+    if (!phaseToDelete) return;
+    const id = phaseToDelete.id;
     setIsDeleting(id);
     try {
       const res = await botApiFetch(`/api/phases/${id}?guildId=${guildId}`, {
@@ -63,15 +70,16 @@ export function StructureClient({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
       setDropdownOpen(null);
+      setPhaseToDelete(null);
+      toast.success(t("adminStructure.deletedSuccess"));
       router.refresh();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(t("feedback.deleteFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.deleteFailed", { message: getErrorMessage(err) ?? t("common.unknown") }));
     } finally {
       setIsDeleting(null);
     }
@@ -138,9 +146,12 @@ export function StructureClient({
                         <Users className="w-4 h-4 text-slate-500" /> {t("adminSidebar.placement")}
                       </Link>
                       <button
-                        onClick={() => deletePhase(phase.id)}
+                        onClick={() => {
+                          setDropdownOpen(null);
+                          setPhaseToDelete(phase);
+                        }}
                         disabled={isDeleting === phase.id}
-                        className="flex items-center gap-2 px-4 py-3 hover:bg-rose-500/10 text-rose-400 text-sm w-full text-left font-bold disabled:opacity-50 mt-1 transition-colors"
+                        className="flex items-center gap-2 px-4 py-3 hover:bg-rose-500/10 text-rose-400 text-sm w-full text-left font-bold disabled:opacity-50 mt-1 transition-colors cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" /> {isDeleting === phase.id ? t("adminStructure.deleting") : t("adminStructure.deletePhase")}
                       </button>
@@ -170,7 +181,7 @@ export function StructureClient({
                   e.stopPropagation();
                   createPhase("ROUND_ROBIN");
                 }}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-emerald-500/30 hover:text-white"
+                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-emerald-500/30 hover:text-white cursor-pointer"
               >
                 <LayoutGrid className="w-4 h-4 text-emerald-400" />
                 {t("adminStructure.roundRobin")}
@@ -180,7 +191,7 @@ export function StructureClient({
                   e.stopPropagation();
                   createPhase("SINGLE_ELIM");
                 }}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-indigo-500/30 hover:text-white"
+                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-indigo-500/30 hover:text-white cursor-pointer"
               >
                 <GitMerge className="w-4 h-4 text-indigo-400" />
                 {t("adminStructure.singleElim")}
@@ -190,7 +201,7 @@ export function StructureClient({
                   e.stopPropagation();
                   createPhase("DOUBLE_ELIM");
                 }}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-violet-500/30 hover:text-white"
+                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-violet-500/30 hover:text-white cursor-pointer"
               >
                 <CopyX className="w-4 h-4 text-violet-400" />
                 {t("adminStructure.doubleElim")}
@@ -200,7 +211,7 @@ export function StructureClient({
                   e.stopPropagation();
                   createPhase("SWISS");
                 }}
-                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-amber-500/30 hover:text-white"
+                className="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs px-4 py-2.5 rounded-lg font-bold shadow-sm border border-slate-700 flex items-center justify-center gap-2 transition-all hover:border-amber-500/30 hover:text-white cursor-pointer"
               >
                 <Network className="w-4 h-4 text-amber-400" />
                 {t("adminStructure.swiss")}
@@ -210,6 +221,19 @@ export function StructureClient({
         </div>
 
       </div>
+
+      {/* Modal Suppression Phase */}
+      <ConfirmModal
+        isOpen={!!phaseToDelete}
+        onClose={() => setPhaseToDelete(null)}
+        onConfirm={deletePhase}
+        title={t("adminStructure.deletePhaseTitle")}
+        description={phaseToDelete ? t("adminStructure.deleteConfirmNamed", { name: phaseToDelete.name }) : ""}
+        confirmText={t("common.deletePermanently")}
+        variant="danger"
+        icon={Trash2}
+        isLoading={!!isDeleting}
+      />
     </div>
   );
 }

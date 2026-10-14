@@ -4,7 +4,10 @@ import { useState, useEffect } from "react";
 import { botApiFetch } from "@/utils/api";
 import { useRouter } from "next/navigation";
 import { Square, Clock, ShieldAlert, Calendar } from "lucide-react";
+import { useToast } from "@/context/ToastContext";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 interface Props {
   tournament: any;
@@ -13,10 +16,11 @@ interface Props {
 
 export function CheckinTimeManager({ tournament, guildId }: Props) {
   const router = useRouter();
+  const { toast } = useToast();
   const { t, locale } = useTranslation();
   const dateLocale = locale === "en" ? "en-US" : "fr-FR";
   const [loadingStop, setLoadingStop] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [showStopModal, setShowStopModal] = useState(false);
   const [now, setNow] = useState(new Date());
 
   // Tick for countdown accuracy
@@ -41,9 +45,6 @@ export function CheckinTimeManager({ tournament, guildId }: Props) {
   const isDraft = tournament.status === "DRAFT";
 
   const handleStopCheckin = async () => {
-    if (!window.confirm(t("adminCheckin.stopConfirm"))) return;
-
-    setError(null);
     setLoadingStop(true);
     try {
       const res = await botApiFetch(`/api/tournaments/${tournament.id}/checkin/stop`, {
@@ -53,13 +54,14 @@ export function CheckinTimeManager({ tournament, guildId }: Props) {
       });
 
       if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || "Erreur de communication avec le bot");
+        throw new Error((await readApiError(res)) ?? t("admin.botCommunicationError"));
       }
 
+      setShowStopModal(false);
+      toast.success(t("adminCheckin.stoppedSuccess"));
       router.refresh();
-    } catch (e: any) {
-      setError(e.message || "Impossible d'arrêter le check-in.");
+    } catch (e: unknown) {
+      toast.error(getErrorMessage(e) ?? t("adminCheckin.stopFailed"));
     } finally {
       setLoadingStop(false);
     }
@@ -100,12 +102,6 @@ export function CheckinTimeManager({ tournament, guildId }: Props) {
         </div>
       </div>
 
-      {error && (
-        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium">
-          {error}
-        </div>
-      )}
-
       {/* 1. STATE: RUNNING (SHOW KILL SWITCH) */}
       {isCheckinRunning && checkinEnd && (
         <div className="bg-green-950/20 border border-green-800/40 rounded-xl p-5 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -122,9 +118,9 @@ export function CheckinTimeManager({ tournament, guildId }: Props) {
           </div>
 
           <button
-            onClick={handleStopCheckin}
+            onClick={() => setShowStopModal(true)}
             disabled={loadingStop}
-            className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg font-bold transition-all shadow-md shadow-red-900/35 active:scale-[0.98] disabled:opacity-50"
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white px-5 py-2.5 rounded-lg font-bold transition-all shadow-md shadow-red-900/35 active:scale-[0.98] disabled:opacity-50 cursor-pointer"
           >
             <Square className="w-4 h-4 fill-white" />
             {loadingStop ? t("adminCheckin.stopping") : t("adminCheckin.killSwitch")}
@@ -171,6 +167,19 @@ export function CheckinTimeManager({ tournament, guildId }: Props) {
           </div>
         </div>
       )}
+
+      {/* Modal Confirmation Arrêt Checkin */}
+      <ConfirmModal
+        isOpen={showStopModal}
+        onClose={() => setShowStopModal(false)}
+        onConfirm={handleStopCheckin}
+        title={t("adminCheckin.stopTitle")}
+        description={t("adminCheckin.stopConfirm")}
+        confirmText={t("adminCheckin.stopNow")}
+        variant="danger"
+        icon={Square}
+        isLoading={loadingStop}
+      />
     </div>
   );
 }

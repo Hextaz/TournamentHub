@@ -9,7 +9,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useSession } from "next-auth/react";
 import { botApiFetch } from '@/utils/api';
+import { useToast } from "@/context/ToastContext";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 const formSchema = z.object({
   name: z.string().min(3, "Le nom doit contenir au moins 3 caractères"),
@@ -24,6 +27,7 @@ export default function TournamentsPage({
   params: Promise<{ guildId: string }>;
 }) {
   const router = useRouter();
+  const { toast } = useToast();
   const { guildId } = use(params);
   const { t, locale } = useTranslation();
 
@@ -31,6 +35,8 @@ export default function TournamentsPage({
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [tournamentToDelete, setTournamentToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const { register, handleSubmit, formState: { errors }, reset } = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -52,26 +58,27 @@ export default function TournamentsPage({
 
   const activePublishedTournament = tournaments.find(t => ['REGISTRATION', 'ACTIVE'].includes(t.status));
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!window.confirm(t("adminTournaments.deleteConfirm", { name }))) return;
+  const handleDelete = async () => {
+    if (!tournamentToDelete) return;
     try {
-      setLoading(true);
+      setDeleting(true);
 
-      const response = await fetch(`/api/tournaments/${id}?guildId=${guildId}`, {
+      const response = await fetch(`/api/tournaments/${tournamentToDelete.id}?guildId=${guildId}`, {
         method: "DELETE",
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Accès refusé par le serveur.");
+        throw new Error((await readApiError(response)) ?? t("adminTournaments.deleteForbidden"));
       }
 
+      setTournamentToDelete(null);
+      toast.success(t("adminTournaments.deletedSuccess"));
       await fetchTournaments();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Delete Error:", err);
-      alert(`Erreur de suppression: ${err.message || "Erreur inconnue"}`);
+      toast.error(t("feedback.deleteFailed", { message: getErrorMessage(err) ?? t("common.unknown") }));
     } finally {
-      setLoading(false);
+      setDeleting(false);
     }
   };
 
@@ -94,21 +101,21 @@ export default function TournamentsPage({
       });
 
       if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Erreur inconnue');
+        throw new Error((await readApiError(res)) ?? t("common.unknown"));
       }
 
       const created = await res.json();
 
       setShowCreateModal(false);
       reset();
+      toast.success(t("adminTournaments.createdSuccess"));
       fetchTournaments();
 
       router.push(`/admin/${guildId}/tournaments/${created.id}`);
 
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(t("feedback.createTournamentFailed", { message: err.message || String(err) }));
+      toast.error(t("feedback.createTournamentFailed", { message: getErrorMessage(err) ?? t("common.unknown") }));
     } finally {
       setCreating(false);
     }
@@ -160,9 +167,9 @@ export default function TournamentsPage({
                     <h2 className="text-2xl font-bold text-white leading-tight">{tournament.name}</h2>
                   </div>
                   <button
-                    onClick={() => handleDelete(tournament.id, tournament.name)}
+                    onClick={() => setTournamentToDelete({ id: tournament.id, name: tournament.name })}
                     title={t("adminTournaments.deleteTitle")}
-                    className="p-2 ml-4 bg-slate-700/50 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors shrink-0"
+                    className="p-2 ml-4 bg-slate-700/50 hover:bg-red-500/20 text-slate-400 hover:text-red-400 rounded-lg transition-colors shrink-0 cursor-pointer"
                   >
                     <Trash2 className="w-5 h-5" />
                   </button>
@@ -257,6 +264,19 @@ export default function TournamentsPage({
           </div>
         </div>
       )}
+
+      {/* Modal Suppression Tournoi */}
+      <ConfirmModal
+        isOpen={!!tournamentToDelete}
+        onClose={() => setTournamentToDelete(null)}
+        onConfirm={handleDelete}
+        title={t("adminTournaments.deleteModalTitle")}
+        description={tournamentToDelete ? t("adminTournaments.deleteConfirm", { name: tournamentToDelete.name }) : ""}
+        confirmText={t("common.deletePermanently")}
+        variant="danger"
+        icon={Trash2}
+        isLoading={deleting}
+      />
     </div>
   );
 }

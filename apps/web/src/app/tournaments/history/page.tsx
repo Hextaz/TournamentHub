@@ -3,13 +3,20 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
+import { useToast } from "@/context/ToastContext";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { useTranslation } from "@/i18n/LanguageContext";
+import { getErrorMessage, readApiError } from "@/utils/errors";
 
 export default function TournamentsHistoryPage() {
   const guildId = process.env.NEXT_PUBLIC_DISCORD_GUILD_ID || "";
+  const { toast } = useToast();
   const { t, locale } = useTranslation();
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [tournamentToDelete, setTournamentToDelete] = useState<{ id: string; name: string } | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchHistory = async () => {
     setLoading(true);
@@ -28,10 +35,24 @@ export default function TournamentsHistoryPage() {
     fetchHistory();
   }, [guildId]);
 
-  const deleteTournament = async (id: string, name: string) => {
-    if (confirm(t("tournamentsHistory.deleteConfirm", { name }))) {
-      await supabase.from("tournaments").delete().eq("id", id);
-      setHistory(history.filter(t => t.id !== id));
+  const deleteTournament = async () => {
+    if (!tournamentToDelete) return;
+    try {
+      setDeleting(true);
+      const res = await fetch(`/api/tournaments/${tournamentToDelete.id}?guildId=${guildId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        throw new Error((await readApiError(res)) ?? t("tournamentsHistory.deleteFailed"));
+      }
+      setHistory((prev) => prev.filter((tItem) => tItem.id !== tournamentToDelete.id));
+      setTournamentToDelete(null);
+      toast.success(t("tournamentsHistory.deletedSuccess"));
+    } catch (err: unknown) {
+      console.error(err);
+      toast.error(getErrorMessage(err) ?? t("tournamentsHistory.deleteFailed"));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -72,8 +93,8 @@ export default function TournamentsHistoryPage() {
                     </td>
                     <td className="p-4 text-right">
                       <button 
-                        onClick={() => deleteTournament(tItem.id, tItem.name)}
-                        className="text-sm text-red-600 hover:text-red-900 font-medium px-3 py-1 border border-red-200 hover:bg-red-50 rounded transition"
+                        onClick={() => setTournamentToDelete({ id: tItem.id, name: tItem.name })}
+                        className="text-sm text-red-600 hover:text-red-900 font-medium px-3 py-1 border border-red-200 hover:bg-red-50 rounded transition cursor-pointer"
                       >
                         {t("tournamentsHistory.delete")}
                       </button>
@@ -85,6 +106,19 @@ export default function TournamentsHistoryPage() {
           )}
         </div>
       </div>
+
+      {/* Modal Suppression Tournoi Archivé */}
+      <ConfirmModal
+        isOpen={!!tournamentToDelete}
+        onClose={() => setTournamentToDelete(null)}
+        onConfirm={deleteTournament}
+        title={t("common.deletePermanently")}
+        description={tournamentToDelete ? t("tournamentsHistory.deleteConfirm", { name: tournamentToDelete.name }) : ""}
+        confirmText={t("common.deletePermanently")}
+        variant="danger"
+        icon={Trash2}
+        isLoading={deleting}
+      />
     </div>
   );
 }
