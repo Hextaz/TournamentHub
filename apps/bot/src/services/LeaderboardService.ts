@@ -144,10 +144,10 @@ export class LeaderboardService {
       }
 
       await Promise.all(updatePromises);
-      console.log(`[LeaderboardService] Successfully updated standings for group ${groupId}`);
+      logger.info(`[LeaderboardService] Successfully updated standings for group ${groupId}`);
 
     } catch (error) {
-      console.error(`[LeaderboardService] Error calculating group standings for ${groupId}:`, error);
+      logger.error(`[LeaderboardService] Error calculating group standings for ${groupId}:`, error);
     }
   }
 
