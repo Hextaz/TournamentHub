@@ -98,6 +98,7 @@ Ce document consigne l'ensemble des **cas limites**, **invariants de sécurité 
 | **SEC-06** | Proxy `/api/bot/[...path]` | Requête sans session NextAuth. | `401` avant tout appel au bot. `X-Discord-User-Id` est dérivé de la session serveur, jamais du client. | 🛡️ |
 | **SEC-07** | RLS Supabase | Écriture directe via la clé anon sur `tournaments`, `phases`, `matches`… | Refusée : les politiques d'écriture exigent `is_admin_of_tournament` ou `service_role`. La lecture publique est volontaire. | 🛡️ |
 | **SEC-08** | `ServerSettingsRouter` | Modification des paramètres d'un autre serveur. | `403` si le `guild_id` du body diffère du guild authentifié. | 🛡️ |
+| **SEC-09** | NextAuth Discord OAuth | Retour OAuth avec `iss` Discord, émetteur inattendu ou `state` divergent. | Émetteur attendu fixé à `https://discord.com` : connexion acceptée pour Discord, émetteur et état invalides refusés avant échange du code. | ✅ `apps/web/src/app/api/auth/__tests__/discordOAuth.test.ts` |
 
 ---
 
