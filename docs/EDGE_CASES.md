@@ -49,7 +49,10 @@ Ce document consigne l'ensemble des **cas limites**, **invariants de sécurité 
 | **RR-02** | `generateGroups` | Groupe au nombre impair d'équipes. | Ajout d'un slot virtuel `"BYE"`. Le match contre le BYE est inséré en `COMPLETED` avec `1-0` (et non `BYE`) pour être compté par le classement. | 🛡️ |
 | **RR-03** | `generateGroups` | Distribution des équipes dans plusieurs groupes. | Répartition en serpentin (snake seeding) : `G1, G2, …, Gn, Gn, …, G1`. | 🛡️ |
 | **LB-01** | `calculateGroupStandings` | Appels concurrents pour le même groupe (deux scores validés en même temps). | Mutex par `groupId` : les recalculs sont sérialisés, pas d'écrasement concurrent de `phase_teams`. | 🛡️ |
-| **LB-02** | `calculateGroupStandings` | JSON `phase.settings` malformé. | Log d'erreur et barème par défaut (`3/1/0/0`) : pas de crash. | 🛡️ |
+| **LB-02** | `calculateGroupStandings` | JSON `phase.settings` malformé. | Log d'erreur (`logger.error`) et repli sur le barème par défaut (`3/1/0/0`) : pas de crash (`LeaderboardService.test.ts`). | ✅ |
+| **LB-03** | `resolveGroupPoints` / `calculateGroupStandings` | Settings vides (`{}`), `null`, `NaN`, chaîne ou clé manquante. | Repli clé par clé sur le barème par défaut (`3/1/0/0`), jamais de `0` point indésirable (`groupPoints.test.ts`, `LeaderboardService.test.ts`). | ✅ |
+| **LB-04** | `resolveGroupPoints` / `calculateGroupStandings` | Barème personnalisé défini par l'organisateur (ex. victoire = 2, pénalité forfait = -1). | Valeurs entières respectées et appliquées fidèlement au calcul des points (`groupPoints.test.ts`, `LeaderboardService.test.ts`). | ✅ |
+| **PH-01** | `PUT /api/phases/:id` / `GroupPointsSettingsSchema` | Valeur de points vide (`""`), non numérique, décimale ou hors [-99, 99]. | Validation stricte : rejet `400 Validation Error` sans aucune écriture en base (`PhaseRouter.update.test.ts`, `groupPoints.test.ts`). | ✅ |
 
 ---
 
