@@ -4,7 +4,6 @@ import { useEffect, useState, use } from "react";
 import { botApiFetch } from '@/utils/api';
 import { supabase } from "@/lib/supabase";
 import { Save, Loader2, RefreshCw } from "lucide-react";
-import { useSession } from "next-auth/react";
 import { useTranslation } from "@/i18n/LanguageContext";
 import { getErrorMessage, readApiError } from "@/utils/errors";
 import { DiscordInviteUrlSchema } from "@hub/shared";
@@ -16,7 +15,6 @@ export default function SettingsPage({
 }) {
   const unwrappedParams = use(params);
   const { guildId } = unwrappedParams;
-  const { data: session, status } = useSession();
   const { t } = useTranslation();
 
   const [loading, setLoading] = useState(true);
@@ -39,8 +37,6 @@ export default function SettingsPage({
 
   useEffect(() => {
     async function loadData() {
-      if (status === "loading") return;
-
       setLoading(true);
       try {
         const { data: dbSettings, error: dbError } = await supabase
@@ -85,7 +81,9 @@ export default function SettingsPage({
       setLoading(false);
     }
     loadData();
-  }, [guildId, session, status, t]);
+  // Ne dépend que du serveur : la session NextAuth est relue à chaque retour sur l'onglet, et la relancer
+  // ici rechargeait la base par-dessus les modifications non enregistrées.
+  }, [guildId, t]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setSettings((prev) => ({

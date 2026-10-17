@@ -61,12 +61,39 @@ export function isServerSetupComplete(settings: SetupFields | null): boolean {
   return serverSetupChecklist(settings).every((step) => step.done);
 }
 
-export type ServerCardState = "install" | "setup" | "ready" | "view";
+export interface GuildSummary {
+  id: string;
+  name: string;
+  icon: string | null;
+  owner: boolean;
+  permissions: string;
+}
 
-export function serverCardState(input: { botPresent: boolean; canManage: boolean; setupComplete: boolean }): ServerCardState | null {
-  if (!input.botPresent) return input.canManage ? "install" : null;
-  if (!input.canManage) return "view";
-  return input.setupComplete ? "ready" : "setup";
+export type ManageState = "install" | "setup" | "ready";
+
+const MANAGE_ORDER: Record<ManageState, number> = { setup: 0, ready: 1, install: 2 };
+
+/**
+ * Sépare les serveurs Discord du visiteur en deux vues :
+ * - memberServers (« Mes serveurs ») : membre + bot présent, quels que soient les droits ;
+ * - managedServers (panel organisateur) : droits de gestion (OAuth ou rôle TO via guild_admins), bot présent ou non.
+ */
+export function splitServers<G extends GuildSummary>(
+  guilds: G[],
+  settings: ReadonlyMap<string, SetupFields & { bot_present: boolean }>,
+  adminOf: ReadonlySet<string>,
+): { memberServers: G[]; managedServers: { guild: G; state: ManageState }[] } {
+  const byName = (a: G, b: G) => a.name.localeCompare(b.name);
+  const memberServers = guilds.filter((g) => settings.get(g.id)?.bot_present === true).sort(byName);
+  const managedServers = guilds
+    .filter((g) => canManageFromOAuth(g) || adminOf.has(g.id))
+    .map((guild) => {
+      const profile = settings.get(guild.id);
+      const state: ManageState = !profile?.bot_present ? "install" : isServerSetupComplete(profile) ? "ready" : "setup";
+      return { guild, state };
+    })
+    .sort((a, b) => MANAGE_ORDER[a.state] - MANAGE_ORDER[b.state] || byName(a.guild, b.guild));
+  return { memberServers, managedServers };
 }
 
 export interface NextStepTournament {

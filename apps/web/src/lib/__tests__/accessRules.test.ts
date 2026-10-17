@@ -4,7 +4,7 @@ import {
   canManageFromOAuth,
   canViewTournament,
   serverSetupChecklist,
-  serverCardState,
+  splitServers,
   tournamentNextStep,
 } from "../accessRules";
 
@@ -49,15 +49,46 @@ describe("serverSetupChecklist / serverCardState", () => {
     expect(steps.filter((s) => !s.done).map((s) => s.key)).toEqual(["toRole", "checkinChannel"]);
   });
 
-  it("DISC-07: sans bot, un gestionnaire voit « installer », un simple membre ne voit rien", () => {
-    expect(serverCardState({ botPresent: false, canManage: true, setupComplete: false })).toBe("install");
-    expect(serverCardState({ botPresent: false, canManage: false, setupComplete: false })).toBeNull();
+});
+
+describe("splitServers", () => {
+  const complete = {
+    to_role_id: "1",
+    captain_role_id: "2",
+    registration_channel_id: "3",
+    announcement_channel_id: "4",
+    checkin_channel_id: "5",
+  };
+  const g = (id: string, perms = "0", owner = false) => ({ id, name: id, icon: null, owner, permissions: perms });
+
+  it("Mes serveurs : tous les serveurs où l'on est membre ET où le bot est présent, sans condition de droits", () => {
+    const settings = new Map([
+      ["with-bot", { ...complete, bot_present: true }],
+      ["bot-left", { ...complete, bot_present: false }],
+    ]);
+    const { memberServers } = splitServers([g("with-bot"), g("bot-left"), g("unknown")], settings, new Set());
+    expect(memberServers.map((s) => s.id)).toEqual(["with-bot"]);
   });
 
-  it("avec bot : configuration à terminer, prêt, ou simple consultation", () => {
-    expect(serverCardState({ botPresent: true, canManage: true, setupComplete: false })).toBe("setup");
-    expect(serverCardState({ botPresent: true, canManage: true, setupComplete: true })).toBe("ready");
-    expect(serverCardState({ botPresent: true, canManage: false, setupComplete: false })).toBe("view");
+  it("Panel : serveurs gérables (OAuth ou rôle TO), bot installé ou non, avec l'état à traiter", () => {
+    const settings = new Map([
+      ["ready", { ...complete, bot_present: true }],
+      ["setup", { ...complete, to_role_id: null, bot_present: true }],
+      ["left", { ...complete, bot_present: false }],
+      ["member-only", { ...complete, bot_present: true }],
+    ]);
+    const { managedServers } = splitServers(
+      [g("ready", "8"), g("setup", "0", true), g("left", "32"), g("no-bot", "8"), g("to-role"), g("member-only")],
+      settings,
+      new Set(["to-role"]),
+    );
+    expect(managedServers.map((s) => [s.guild.id, s.state])).toEqual([
+      ["setup", "setup"],
+      ["ready", "ready"],
+      ["left", "install"],
+      ["no-bot", "install"],
+      ["to-role", "install"],
+    ]);
   });
 });
 

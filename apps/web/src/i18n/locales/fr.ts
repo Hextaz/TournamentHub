@@ -38,6 +38,7 @@ export const fr = {
     avatarAlt: "Avatar Discord",
     brand: "TournamentHub",
     myServers: "Mes Serveurs",
+    organizerPanel: "Panel organisateur",
     tournaments: "Tournois",
     settings: "Paramètres",
     loginDiscord: "Connexion Discord",
@@ -68,23 +69,26 @@ export const fr = {
   },
   servers: {
     title: "Mes serveurs",
-    subtitle:
-      "Vos serveurs Discord : consultez leurs tournois, installez le bot ou gérez ceux que vous organisez.",
+    subtitle: "Les serveurs Discord dont vous êtes membre et qui utilisent le bot : retrouvez leurs tournois.",
     sessionExpired:
       "Session expirée ou vous n'avez pas accordé les permissions \"serveurs\".",
     backToHome: "Retour à l'accueil",
-    noServersFound: "Aucun serveur à afficher",
-    noServersDesc:
-      "Aucun de vos serveurs n'utilise encore le bot, et vous ne gérez aucun serveur où l'installer.",
-    access: "Accéder",
+    noServersFound: "Aucun serveur avec le bot",
+    noServersDesc: "Aucun des serveurs dont vous êtes membre n'utilise encore le bot.",
+    actionView: "Voir les tournois",
+    organizerBadge: "Organisateur",
+  },
+  adminHub: {
+    title: "Panel organisateur",
+    subtitle: "Les serveurs que vous pouvez gérer (propriétaire, Administrateur, Gérer le serveur ou rôle TO), avec ou sans le bot.",
+    empty: "Aucun serveur à gérer",
+    emptyDesc: "Il faut être propriétaire d'un serveur, y avoir la permission Administrateur ou Gérer le serveur, ou porter son rôle TO.",
     stateInstall: "Bot non installé",
     stateSetup: "Configuration à terminer",
     stateReady: "Prêt",
-    stateView: "Membre",
     actionInstall: "Installer le bot",
     actionSetup: "Terminer la configuration",
     actionManage: "Gérer",
-    actionView: "Voir les tournois",
     installHint: "Après l'installation, rechargez cette page : le serveur passera à l'étape suivante.",
   },
   discover: {

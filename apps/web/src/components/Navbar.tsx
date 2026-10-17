@@ -53,6 +53,12 @@ export default function Navbar() {
                 >
                   {t("nav.myServers")}
                 </Link>
+                <Link
+                  href="/admin"
+                  className="text-slate-300 hover:text-white text-sm font-medium transition"
+                >
+                  {t("nav.organizerPanel")}
+                </Link>
                 <div className="flex items-center gap-3">
                   <img
                     src={
@@ -129,6 +135,13 @@ export default function Navbar() {
                 onClick={() => setIsOpen(false)}
               >
                 {t("nav.myServers")}
+              </Link>
+              <Link
+                href="/admin"
+                className="block px-3 py-2 rounded-md text-base font-medium text-slate-300 hover:text-white hover:bg-[#151722]"
+                onClick={() => setIsOpen(false)}
+              >
+                {t("nav.organizerPanel")}
               </Link>
               <button
                 onClick={() => signOut({ callbackUrl: "/" })}

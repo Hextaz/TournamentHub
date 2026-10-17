@@ -40,6 +40,7 @@ export const en: typeof fr = {
     avatarAlt: "Discord avatar",
     brand: "TournamentHub",
     myServers: "My Servers",
+    organizerPanel: "Organizer panel",
     tournaments: "Tournaments",
     settings: "Settings",
     loginDiscord: "Discord Login",
@@ -70,23 +71,26 @@ export const en: typeof fr = {
   },
   servers: {
     title: "My servers",
-    subtitle:
-      "Your Discord servers: browse their tournaments, install the bot or manage the ones you organize.",
+    subtitle: "Discord servers you belong to that use the bot: find their tournaments.",
     sessionExpired:
       "Session expired or you did not grant the \"servers\" permission.",
     backToHome: "Back to home",
-    noServersFound: "No server to show",
-    noServersDesc:
-      "None of your servers uses the bot yet, and you don't manage any server to install it on.",
-    access: "Access",
+    noServersFound: "No server with the bot",
+    noServersDesc: "None of the servers you belong to uses the bot yet.",
+    actionView: "See tournaments",
+    organizerBadge: "Organizer",
+  },
+  adminHub: {
+    title: "Organizer panel",
+    subtitle: "Servers you can manage (owner, Administrator, Manage Server or TO role), with or without the bot.",
+    empty: "No server to manage",
+    emptyDesc: "You must own a server, have the Administrator or Manage Server permission there, or hold its TO role.",
     stateInstall: "Bot not installed",
     stateSetup: "Setup to finish",
     stateReady: "Ready",
-    stateView: "Member",
     actionInstall: "Install the bot",
     actionSetup: "Finish setup",
     actionManage: "Manage",
-    actionView: "See tournaments",
     installHint: "Once installed, reload this page: the server will move to the next step.",
   },
   discover: {
