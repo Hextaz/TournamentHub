@@ -3,6 +3,7 @@ import {
   GatewayIntentBits,
   Collection,
   ChannelType,
+  Events,
   PermissionFlagsBits,
 } from "discord.js";
 import express from "express";
@@ -18,6 +19,8 @@ import { ScoreService } from "./services/ScoreService";
 import { ArchiveService } from "./services/ArchiveService";
 import { RegistrationService } from "./services/RegistrationService";
 import { WebhookRolesService } from "./services/WebhookRolesService";
+import { GuildRegistryService, readToRoleId } from "./services/GuildRegistryService";
+import { resolveAdminReason } from "./utils/adminAccess";
 import { phaseRouter } from "./routes/PhaseRouter";
 import { matchRouter } from "./routes/MatchRouter";
 import { tournamentRouter } from "./routes/TournamentRouter";
@@ -155,39 +158,30 @@ const getGuild = async (res: any, guildId: string): Promise<any> => {
   return guild;
 };
 
-// Endpoint: Vérifier si un membre a les droits d'admin/TO sur un serveur
+// Endpoint: Vérifier si un membre a les droits d'admin/TO sur un serveur (appel serveur Next.js uniquement :
+// le proxy /api/bot ne relaie pas cette route, cf. SEC-13). Le rôle TO est relu en base, jamais pris du client.
 app.get("/api/discord/permissions", async (req, res) => {
+  const guildId = typeof req.query.guildId === "string" ? req.query.guildId : "";
+  const userId = typeof req.query.userId === "string" ? req.query.userId : "";
+  if (!guildId || !userId) return res.status(400).json({ error: "Missing parameters" });
+
   try {
-    const guildId = req.query.guildId as string;
-    const userId = req.query.userId as string;
-    const toRoleId = req.query.toRoleId as string;
-
-    if (!guildId || !userId) return res.status(400).json({ error: "Missing parameters" });
-
-    const guild = await getGuild(res, guildId);
-    if (!guild) return;
+    const guild = await client.guilds.fetch(guildId).catch(() => null);
+    if (!guild) return res.status(200).json({ hasPermission: false, reason: "BOT_NOT_IN_GUILD" });
 
     const member = await guild.members.fetch(userId).catch(() => null);
-    if (!member) {
-      return res.status(200).json({ hasPermission: false, reason: "Utilisateur non trouvé sur le serveur" });
-    }
+    if (!member) return res.status(200).json({ hasPermission: false, reason: "NOT_A_MEMBER" });
 
-    // Server Owner always has permission
-    if (guild.ownerId === userId) {
-      return res.status(200).json({ hasPermission: true, reason: "SERVER_OWNER" });
-    }
+    const settings = await readToRoleId(guildId);
+    if (!settings.ok) return res.status(503).json({ error: "Permission check temporarily unavailable" });
 
-    // Le membre a-t-il la permission native Gérer le Serveur ?
-    if (member.permissions.has(PermissionFlagsBits.Administrator) || member.permissions.has(PermissionFlagsBits.ManageGuild)) {
-      return res.status(200).json({ hasPermission: true, reason: "ADMIN" });
-    }
-
-    // Le membre possède-t-il le rôle T.O ?
-    if (toRoleId && member.roles.cache.has(toRoleId)) {
-      return res.status(200).json({ hasPermission: true, reason: "TO_ROLE" });
-    }
-
-    return res.status(200).json({ hasPermission: false, reason: "No sufficient rights" });
+    const reason = resolveAdminReason({
+      isOwner: guild.ownerId === userId,
+      hasAdministrator: member.permissions.has(PermissionFlagsBits.Administrator),
+      hasManageGuild: member.permissions.has(PermissionFlagsBits.ManageGuild),
+      hasToRole: !!settings.toRoleId && member.roles.cache.has(settings.toRoleId),
+    });
+    return res.status(200).json({ hasPermission: reason !== null, reason: reason ?? "NO_RIGHTS" });
   } catch (error) {
     logger.error("Error checking permissions:", error);
     return res.status(500).json({ error: "Internal Server Error" });
@@ -376,85 +370,50 @@ const bootstrap = async () => {
   });
 
   try {
-    // Listen for Role Removals or Member Leaves
+    // Droits back-office : guild_admins suit les membres, leurs rôles et leurs permissions (DISC-08).
     client.on('guildMemberRemove', async (member) => {
-      try {
-        const guildId = member.guild.id;
-        const userId = member.user.id;
-
-        await supabase.from('guild_admins').delete()
-          .eq('guild_id', guildId)
-          .eq('discord_id', userId);
-
-        await supabase.rpc('remove_admin_from_all_tournaments', {
-          target_guild_id: guildId,
-          removed_admin_id: userId
-        });
-        logger.info(`[Bot] Removed admin rights for ${member.user.tag} (left guild ${member.guild.name})`);
-      } catch (err) {
-        logger.error('[Bot] Failed to remove admin on member leave:', err);
-      }
+      await GuildRegistryService.removeMember(member.guild.id, member.user.id);
     });
 
     client.on('guildMemberUpdate', async (oldMember, newMember) => {
-      try {
-        const guildId = newMember.guild.id;
-        const userId = newMember.user.id;
+      const oldRoleIds = new Set(oldMember.roles.cache.keys());
+      const newRoleIds = new Set(newMember.roles.cache.keys());
+      const rolesChanged =
+        oldRoleIds.size !== newRoleIds.size ||
+        [...newRoleIds].some(id => !oldRoleIds.has(id));
+      if (!rolesChanged && !oldMember.partial) return;
 
-        // P0-2 FIX: Compare actual role sets, not just size count.
-        // The old code used `size === size` which misses cases where
-        // one role is removed and another added simultaneously.
-        const oldRoleIds = new Set(oldMember.roles.cache.keys());
-        const newRoleIds = new Set(newMember.roles.cache.keys());
-        const rolesChanged =
-          oldRoleIds.size !== newRoleIds.size ||
-          [...newRoleIds].some(id => !oldRoleIds.has(id));
+      const settings = await readToRoleId(newMember.guild.id);
+      if (!settings.ok) return;
+      await GuildRegistryService.syncMemberAdmin(newMember.guild, newMember, settings.toRoleId);
+    });
 
-        // Also check if admin-level permissions changed
-        // (e.g., a role with Administrator was removed even if role count stayed the same)
-        const oldHadAdmin = oldMember.permissions.has(PermissionFlagsBits.Administrator) ||
-          oldMember.permissions.has(PermissionFlagsBits.ManageGuild);
-        const newHasAdmin = newMember.permissions.has(PermissionFlagsBits.Administrator) ||
-          newMember.permissions.has(PermissionFlagsBits.ManageGuild);
-        const adminPermChanged = oldHadAdmin !== newHasAdmin;
+    // Un rôle peut gagner ou perdre Administrateur / Gérer le serveur sans qu'aucun membre ne change de rôle.
+    client.on('roleUpdate', async (oldRole, newRole) => {
+      if (oldRole.permissions.bitfield === newRole.permissions.bitfield) return;
+      await GuildRegistryService.syncGuildAdmins(newRole.guild);
+    });
 
-        if (!rolesChanged && !adminPermChanged) return;
+    // Cycle de vie des serveurs : la ligne server_settings rend le serveur visible sur le web (DISC-07).
+    client.on("guildCreate", async (guild) => {
+      if (await GuildRegistryService.registerGuild(guild)) {
+        await GuildRegistryService.syncGuildAdmins(guild);
+      }
+    });
+    client.on("guildUpdate", async (_oldGuild, newGuild) => {
+      await GuildRegistryService.registerGuild(newGuild);
+    });
+    client.on("guildDelete", async (guild) => {
+      await GuildRegistryService.markGuildLeft(guild.id);
+    });
 
-        const isOwner = newMember.guild.ownerId === userId;
-        const hasAdminPerm = newHasAdmin;
-
-        const { data: serverSettings } = await supabase
-          .from('server_settings')
-          .select('to_role_id')
-          .eq('guild_id', guildId)
-          .single();
-
-        const hasToRole = serverSettings?.to_role_id && newMember.roles.cache.has(serverSettings.to_role_id);
-        const shouldAdmin = isOwner || hasAdminPerm || hasToRole;
-
-        if (shouldAdmin) {
-          const reason = isOwner ? 'SERVER_OWNER' : hasAdminPerm ? 'ADMINISTRATOR' : 'TO_ROLE';
-          await supabase.from('guild_admins').upsert(
-            { guild_id: guildId, discord_id: userId, reason },
-            { onConflict: 'guild_id,discord_id' }
-          );
-          await supabase.rpc('add_admin_to_all_tournaments', {
-            target_guild_id: guildId,
-            new_admin_id: userId
-          });
-          logger.info(`[Bot] Synced admin rights for ${newMember.user.tag} (${reason})`);
-        } else {
-          await supabase.from('guild_admins').delete()
-            .eq('guild_id', guildId)
-            .eq('discord_id', userId);
-          await supabase.rpc('remove_admin_from_all_tournaments', {
-            target_guild_id: guildId,
-            removed_admin_id: userId
-          });
-          logger.info(`[Bot] Removed admin rights for ${newMember.user.tag} (lost TO/Admin roles in ${newMember.guild.name})`);
+    // Rattrapage au démarrage : serveurs rejoints ou modifiés pendant que le bot était hors ligne.
+    // Attendre ClientReady : avant, le cache ne contient que des serveurs indisponibles (sans nom ni membres).
+    client.once(Events.ClientReady, async (readyClient) => {
+      for (const guild of readyClient.guilds.cache.values()) {
+        if (await GuildRegistryService.registerGuild(guild)) {
+          await GuildRegistryService.syncGuildAdmins(guild);
         }
-      } catch (err) {
-        logger.error('[Bot] Failed to sync roles on member update:', err);
       }
     });
 
@@ -462,87 +421,6 @@ const bootstrap = async () => {
     await client.login(DISCORD_TOKEN);
     logger.info(`[Bot] Logged in as ${client.user?.tag}`);
 
-    // Sync connected guilds into Supabase
-    try {
-      const guildsInCache = Array.from(client.guilds.cache.keys());
-      if (guildsInCache.length > 0) {
-        const { data: existingSettings } = await supabase
-          .from("server_settings")
-          .select("guild_id");
-
-        const existingIds = new Set(existingSettings?.map((s: any) => s.guild_id) || []);
-        const missingGuilds = guildsInCache.filter((id) => !existingIds.has(id));
-
-        if (missingGuilds.length > 0) {
-          const inserts = missingGuilds.map((id) => {
-            const g = client.guilds.cache.get(id);
-            const detectedLang = g?.preferredLocale?.toLowerCase().startsWith("en") ? "en" : "fr";
-            return { guild_id: id, language: detectedLang };
-          });
-          const { error: insertErr } = await supabase.from("server_settings").insert(inserts);
-          if (insertErr) {
-            logger.error(`[Sync] Failed to insert missing guilds to DB:`, insertErr);
-          } else {
-            logger.info(`[Sync] Inserted ${missingGuilds.length} missing guilds to DB.`);
-          }
-        }
-      }
-    } catch (err) {
-      logger.error("Failed to sync connected guilds:", err);
-    }
-
-    // Bootstrap guild_admins table from live Discord member data
-    try {
-      for (const [guildId, guild] of client.guilds.cache) {
-        const { data: settings } = await supabase
-          .from('server_settings')
-          .select('to_role_id')
-          .eq('guild_id', guildId)
-          .single();
-
-        const members = await guild.members.fetch();
-        const adminRecords: { guild_id: string; discord_id: string; reason: string }[] = [];
-
-        for (const [memberId, member] of members) {
-          const isOwner = guild.ownerId === memberId;
-          const hasAdminPerm = member.permissions.has(PermissionFlagsBits.Administrator) ||
-            member.permissions.has(PermissionFlagsBits.ManageGuild);
-          const hasToRole = settings?.to_role_id && member.roles.cache.has(settings.to_role_id);
-
-          if (isOwner || hasAdminPerm || hasToRole) {
-            const reason = isOwner ? 'SERVER_OWNER' : hasAdminPerm ? 'ADMINISTRATOR' : 'TO_ROLE';
-            adminRecords.push({ guild_id: guildId, discord_id: memberId, reason });
-            await supabase.rpc('add_admin_to_all_tournaments', {
-              target_guild_id: guildId,
-              new_admin_id: memberId
-            });
-          }
-        }
-
-        if (adminRecords.length > 0) {
-          await supabase.from('guild_admins').upsert(adminRecords, { onConflict: 'guild_id,discord_id' });
-          logger.info(`[Sync] Bootstrapped ${adminRecords.length} guild_admins for ${guild.name}`);
-        }
-      }
-    } catch (err) {
-      logger.error("Failed to bootstrap guild_admins:", err);
-    }
-
-    // Register new guilds when bot joins a server
-    client.on("guildCreate", async (guild) => {
-      try {
-        const detectedLang = guild.preferredLocale?.toLowerCase().startsWith("en") ? "en" : "fr";
-        const { error } = await supabase.from("server_settings").insert({ 
-          guild_id: guild.id,
-          language: detectedLang 
-        });
-        if (!error) {
-          logger.info(`[Sync] Registered new server: ${guild.name} (${guild.id}) with language ${detectedLang}`);
-        }
-      } catch (e) {
-        logger.error(`Failed to register server ${guild.id}:`, e);
-      }
-    });
 
     // Start Tournament Scheduler
     await SchedulerService.init(client);

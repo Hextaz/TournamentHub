@@ -7,6 +7,7 @@ import { Save, Loader2, RefreshCw } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useTranslation } from "@/i18n/LanguageContext";
 import { getErrorMessage, readApiError } from "@/utils/errors";
+import { DiscordInviteUrlSchema } from "@hub/shared";
 
 export default function SettingsPage({
   params,
@@ -29,6 +30,7 @@ export default function SettingsPage({
     announcement_channel_id: "",
     registration_channel_id: "",
     language: "fr",
+    invite_url: "",
   });
 
   const [discordRoles, setDiscordRoles] = useState<{ id: string; name: string }[]>([]);
@@ -55,6 +57,7 @@ export default function SettingsPage({
             announcement_channel_id: dbSettings.announcement_channel_id || "",
             registration_channel_id: dbSettings.registration_channel_id || "",
             language: dbSettings.language || "fr",
+            invite_url: dbSettings.invite_url || "",
           });
         }
 
@@ -93,8 +96,12 @@ export default function SettingsPage({
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaving(true);
     setMessage({ type: "", text: "" });
+    if (settings.invite_url.trim() && !DiscordInviteUrlSchema.safeParse(settings.invite_url).success) {
+      setMessage({ type: "error", text: t("adminSettings.inviteInvalid") });
+      return;
+    }
+    setSaving(true);
 
     try {
       const res = await botApiFetch(`/api/server-settings?guildId=${guildId}`, {
@@ -109,6 +116,7 @@ export default function SettingsPage({
           announcement_channel_id: settings.announcement_channel_id,
           registration_channel_id: settings.registration_channel_id,
           language: settings.language,
+          invite_url: settings.invite_url.trim(),
         }),
       });
 
@@ -289,6 +297,24 @@ export default function SettingsPage({
                 />
               )}
             </div>
+          </div>
+        </div>
+
+        {/* INVITATION PUBLIQUE */}
+        <div className="space-y-4 pt-4">
+          <h2 className="text-xl font-semibold text-slate-200 border-b border-slate-700 pb-2">{t("adminSettings.inviteSection")}</h2>
+          <div className="flex flex-col gap-2 max-w-xl">
+            <label htmlFor="invite_url" className="text-sm font-medium text-slate-400">{t("adminSettings.inviteLabel")}</label>
+            <input
+              id="invite_url"
+              type="url"
+              name="invite_url"
+              value={settings.invite_url}
+              onChange={handleChange}
+              placeholder={t("adminSettings.invitePlaceholder")}
+              className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-white focus:border-blue-500 focus:outline-none"
+            />
+            <p className="text-xs text-slate-400">{t("adminSettings.inviteDesc")}</p>
           </div>
         </div>
 
