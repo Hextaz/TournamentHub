@@ -12,7 +12,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "AGPL-3.0-only",
   "dependencies": {
     "@hub/shared": "*",
     "@supabase/supabase-js": "^2.102.1",
