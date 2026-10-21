@@ -31,3 +31,7 @@ out/
 
 # Supabase local config
 supabase/.temp/
+
+# Configuration IA propre à une machine (non partageable)
+.antigravitycli/
+.claude/settings.local.json
